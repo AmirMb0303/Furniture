@@ -478,15 +478,9 @@
           <select id="modelSelect"></select>
         </div>
 
-        <div class="small-row">
-          <div class="field">
-            <label>Номер заказа</label>
-            <input id="orderNumber" placeholder="Напр. 1548" />
-          </div>
-          <div class="field">
-            <label>Покупатель</label>
-            <input id="buyer" placeholder="Оптовик" />
-          </div>
+        <div class="field">
+          <label>Покупатель</label>
+          <input id="buyer" placeholder="Оптовик" />
         </div>
 
 
@@ -564,7 +558,7 @@
       <div class="journal-search">
         <div class="field" style="margin-bottom:0;">
           <label>Поиск по журналу</label>
-          <input id="journalSearch" placeholder="Заказ, покупатель, модель, кладовщик, запись" />
+          <input id="journalSearch" placeholder="Покупатель, модель, кладовщик, запись" />
         </div>
         <div class="field" style="margin-bottom:0;">
           <label>Модель</label>
@@ -578,7 +572,7 @@
             <option value="Не оплачено">Не оплачено</option>
           </select>
         </div>
-        <button class="btn-muted" onclick="clearJournalFilters()">Сбросить</button>
+        <button class="btn-primary" onclick="applyJournalSearch()">Поиск</button>
       </div>
       <div class="history-list" id="historyList"></div>
     </section>
@@ -633,7 +627,7 @@
     function init() {
       if (!localStorage.getItem('currentShipmentId')) localStorage.setItem('currentShipmentId', currentShipmentId);
       $('date').value = new Date().toISOString().slice(0, 10);
-      ['orderNumber','buyer','worker','comment','paymentStatus'].forEach(id => {
+      ['buyer','worker','comment','paymentStatus'].forEach(id => {
         $(id).value = localStorage.getItem('field_' + id) || '';
         $(id).addEventListener('input', () => localStorage.setItem('field_' + id, $(id).value));
       });
@@ -649,10 +643,15 @@
         const el = $(id);
         if (el) el.addEventListener('input', clearRequiredError);
       });
-      ['journalSearch','journalModelFilter','journalPaymentFilter'].forEach(id => {
-        const el = $(id);
-        if (el) el.addEventListener(id === 'journalSearch' ? 'input' : 'change', renderHistory);
-      });
+      const journalSearchInput = $('journalSearch');
+      if (journalSearchInput) {
+        journalSearchInput.addEventListener('keydown', event => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            applyJournalSearch();
+          }
+        });
+      }
       renderModelSelect();
       renderParts();
       renderHistory();
@@ -804,7 +803,6 @@
       const item = {
         shipmentId: currentShipmentId,
         model: currentModel,
-        order: $('orderNumber').value.trim(),
         buyer: $('buyer').value.trim(),
         worker: $('worker').value.trim(),
         date: $('date').value,
@@ -836,7 +834,7 @@
       checkedTimes = {};
       shipmentCompleted = false;
       currentShipmentId = makeShipmentId();
-      ['orderNumber','buyer','comment'].forEach(id => {
+      ['buyer','comment'].forEach(id => {
         $(id).value = '';
         localStorage.removeItem('field_' + id);
       });
@@ -862,7 +860,7 @@
       const paymentFilter = (($('journalPaymentFilter') && $('journalPaymentFilter').value) || '').trim();
 
       const filtered = history.filter(h => {
-        const text = [h.date, h.time, h.order, h.buyer, h.model, h.worker, h.paymentStatus, h.status, h.shipmentId, h.comment]
+        const text = [h.date, h.time, h.buyer, h.model, h.worker, h.paymentStatus, h.status, h.shipmentId, h.comment]
           .map(v => String(v || '').toLowerCase())
           .join(' ');
         const matchesText = !q || text.includes(q);
@@ -887,7 +885,6 @@
               <tr>
                 <th>Дата</th>
                 <th>Время</th>
-                <th>Заказ</th>
                 <th>Покупатель</th>
                 <th>Модель</th>
                 <th>Кладовщик</th>
@@ -902,7 +899,6 @@
                 <tr>
                   <td>${escapeHtml(h.date || '')}</td>
                   <td>${escapeHtml(h.time || '')}</td>
-                  <td>${escapeHtml(h.order || 'не указан')}</td>
                   <td>${escapeHtml(h.buyer || 'не указан')}</td>
                   <td>${escapeHtml(h.model || '')}</td>
                   <td>${escapeHtml(h.worker || 'не указан')}</td>
@@ -927,10 +923,7 @@
       if (modelsList.includes(current)) select.value = current;
     }
 
-    function clearJournalFilters() {
-      if ($('journalSearch')) $('journalSearch').value = '';
-      if ($('journalModelFilter')) $('journalModelFilter').value = '';
-      if ($('journalPaymentFilter')) $('journalPaymentFilter').value = '';
+    function applyJournalSearch() {
       renderHistory();
     }
 
@@ -983,9 +976,9 @@
       const history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
       if (!history.length) return alert('Журнал пуст.');
       const rows = [
-        ['Дата','Время','Заказ','Покупатель','Модель','Кладовщик','Деталей','Оплата','Статус','Номер записи','Комментарий']
+        ['Дата','Время','Покупатель','Модель','Кладовщик','Деталей','Оплата','Статус','Номер записи','Комментарий']
       ];
-      history.forEach(h => rows.push([h.date || '', h.time || '', h.order || '', h.buyer || '', h.model || '', h.worker || '', h.totalParts || 20, h.paymentStatus || 'Оплачено', h.status || 'Отпущено', h.shipmentId || '', h.comment || '']));
+      history.forEach(h => rows.push([h.date || '', h.time || '', h.buyer || '', h.model || '', h.worker || '', h.totalParts || 20, h.paymentStatus || 'Оплачено', h.status || 'Отпущено', h.shipmentId || '', h.comment || '']));
       const csv = rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(';')).join('\n');
       const blob = new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
@@ -1005,8 +998,8 @@
         <!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Журнал отгрузок</title>
         <style>body{font-family:Arial,sans-serif;padding:20px;color:#111827}h1{font-size:22px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#111827;color:#fff}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}</style></head><body>
         <h1>Журнал отгрузок мебели</h1>
-        <table><thead><tr><th>Дата</th><th>Время</th><th>Заказ</th><th>Покупатель</th><th>Модель</th><th>Кладовщик</th><th>Деталей</th><th>Оплата</th><th>Статус</th><th>Запись</th></tr></thead>
-        <tbody>${history.map(h => `<tr><td>${escapeHtml(h.date||'')}</td><td>${escapeHtml(h.time||'')}</td><td>${escapeHtml(h.order||'')}</td><td>${escapeHtml(h.buyer||'')}</td><td>${escapeHtml(h.model||'')}</td><td>${escapeHtml(h.worker||'')}</td><td>${escapeHtml(h.totalParts||20)}</td><td>${escapeHtml(h.paymentStatus||'Оплачено')}</td><td>${escapeHtml(h.status||'Отпущено')}</td><td>${escapeHtml(h.shipmentId||'')}</td></tr>`).join('')}</tbody></table>
+        <table><thead><tr><th>Дата</th><th>Время</th><th>Покупатель</th><th>Модель</th><th>Кладовщик</th><th>Деталей</th><th>Оплата</th><th>Статус</th><th>Запись</th></tr></thead>
+        <tbody>${history.map(h => `<tr><td>${escapeHtml(h.date||'')}</td><td>${escapeHtml(h.time||'')}</td><td>${escapeHtml(h.buyer||'')}</td><td>${escapeHtml(h.model||'')}</td><td>${escapeHtml(h.worker||'')}</td><td>${escapeHtml(h.totalParts||20)}</td><td>${escapeHtml(h.paymentStatus||'Оплачено')}</td><td>${escapeHtml(h.status||'Отпущено')}</td><td>${escapeHtml(h.shipmentId||'')}</td></tr>`).join('')}</tbody></table>
         </body></html>`;
       const w = window.open('', '_blank');
       w.document.write(html);
