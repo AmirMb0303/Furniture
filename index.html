@@ -393,12 +393,51 @@
 
     .history-item b { display: block; margin-bottom: 3px; }
 
+    .required-error {
+      border-color: var(--danger) !important;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, .12) !important;
+    }
+
+    .form-alert {
+      margin: 10px 0 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      font-size: 13px;
+      font-weight: 800;
+      display: none;
+    }
+
+    .form-alert.show { display: block; }
+
+    .journal-search {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+
+    .journal-empty {
+      padding: 14px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      background: #f9fafb;
+      color: var(--muted);
+      font-weight: 700;
+      text-align: center;
+    }
+
+
     @media (max-width: 900px) {
       body { padding: 10px; }
       .grid { grid-template-columns: 1fr; }
       .parts-list { grid-template-columns: 1fr; }
       .topbar h1 { font-size: 20px; }
       .actions button { flex: 1; }
+      .journal-search { grid-template-columns: 1fr; }
     }
 
     @media print {
@@ -432,6 +471,7 @@
     <main class="grid">
       <section class="card">
         <h2>Данные отпуска</h2>
+        <div class="form-alert" id="formAlert"></div>
 
         <div class="field">
           <label>Модель гарнитура</label>
@@ -521,6 +561,25 @@
         </div>
       </div>
       <div class="hint" style="margin-bottom:10px;">Журнал хранится в этом браузере. Для передачи бухгалтеру или руководителю используйте «Скачать CSV».</div>
+      <div class="journal-search">
+        <div class="field" style="margin-bottom:0;">
+          <label>Поиск по журналу</label>
+          <input id="journalSearch" placeholder="Заказ, покупатель, модель, кладовщик, запись" />
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Модель</label>
+          <select id="journalModelFilter"><option value="">Все модели</option></select>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Оплата</label>
+          <select id="journalPaymentFilter">
+            <option value="">Все</option>
+            <option value="Оплачено">Оплачено</option>
+            <option value="Не оплачено">Не оплачено</option>
+          </select>
+        </div>
+        <button class="btn-muted" onclick="clearJournalFilters()">Сбросить</button>
+      </div>
       <div class="history-list" id="historyList"></div>
     </section>
   </div>
@@ -586,6 +645,14 @@
       $('date').value = localStorage.getItem('field_date') || $('date').value;
       $('paymentStatus').value = localStorage.getItem('field_paymentStatus') || 'Оплачено';
       updatePaymentStyle();
+      ['buyer','worker','date'].forEach(id => {
+        const el = $(id);
+        if (el) el.addEventListener('input', clearRequiredError);
+      });
+      ['journalSearch','journalModelFilter','journalPaymentFilter'].forEach(id => {
+        const el = $(id);
+        if (el) el.addEventListener(id === 'journalSearch' ? 'input' : 'change', renderHistory);
+      });
       renderModelSelect();
       renderParts();
       renderHistory();
@@ -703,6 +770,7 @@
       const total = (models[currentModel] || []).length;
       const count = Object.keys(checked).length;
       if (!shipmentCompleted && total > 0 && count === total) {
+        if (!validateShipmentFields()) return;
         const confirmed = confirm('Все детали собраны. Подтвердить отгрузку?');
         if (confirmed) {
           completeSet();
@@ -716,6 +784,7 @@
       const total = (models[currentModel] || []).length;
       const count = Object.keys(checked).length;
       if (shipmentCompleted) return;
+      if (!validateShipmentFields()) return;
       if (count !== total) {
         alert(`Комплект не завершен. Осталось деталей: ${total - count}`);
         return;
@@ -776,6 +845,7 @@
       localStorage.setItem('field_date', $('date').value);
       localStorage.setItem('field_paymentStatus', $('paymentStatus').value);
       updatePaymentStyle();
+      clearRequiredError();
       localStorage.setItem('currentShipmentId', currentShipmentId);
       localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
       localStorage.setItem('currentCheckedPartTimes', JSON.stringify(checkedTimes));
@@ -784,10 +854,30 @@
     }
 
     function renderHistory() {
-      const history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
+      let history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
+      updateJournalModelFilter(history);
+
+      const q = (($('journalSearch') && $('journalSearch').value) || '').trim().toLowerCase();
+      const modelFilter = (($('journalModelFilter') && $('journalModelFilter').value) || '').trim();
+      const paymentFilter = (($('journalPaymentFilter') && $('journalPaymentFilter').value) || '').trim();
+
+      const filtered = history.filter(h => {
+        const text = [h.date, h.time, h.order, h.buyer, h.model, h.worker, h.paymentStatus, h.status, h.shipmentId, h.comment]
+          .map(v => String(v || '').toLowerCase())
+          .join(' ');
+        const matchesText = !q || text.includes(q);
+        const matchesModel = !modelFilter || h.model === modelFilter;
+        const matchesPayment = !paymentFilter || (h.paymentStatus || 'Оплачено') === paymentFilter;
+        return matchesText && matchesModel && matchesPayment;
+      });
+
       const box = $('historyList');
       if (!history.length) {
         box.innerHTML = '<div class="hint">Пока нет завершенных отгрузок.</div>';
+        return;
+      }
+      if (!filtered.length) {
+        box.innerHTML = '<div class="journal-empty">По этим фильтрам записей не найдено.</div>';
         return;
       }
       box.innerHTML = `
@@ -808,7 +898,7 @@
               </tr>
             </thead>
             <tbody>
-              ${history.map(h => `
+              ${filtered.map(h => `
                 <tr>
                   <td>${escapeHtml(h.date || '')}</td>
                   <td>${escapeHtml(h.time || '')}</td>
@@ -826,6 +916,61 @@
           </table>
         </div>
       `;
+    }
+
+    function updateJournalModelFilter(history) {
+      const select = $('journalModelFilter');
+      if (!select) return;
+      const current = select.value;
+      const modelsList = [...new Set(history.map(h => h.model).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
+      select.innerHTML = '<option value="">Все модели</option>' + modelsList.map(model => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join('');
+      if (modelsList.includes(current)) select.value = current;
+    }
+
+    function clearJournalFilters() {
+      if ($('journalSearch')) $('journalSearch').value = '';
+      if ($('journalModelFilter')) $('journalModelFilter').value = '';
+      if ($('journalPaymentFilter')) $('journalPaymentFilter').value = '';
+      renderHistory();
+    }
+
+    function validateShipmentFields() {
+      clearRequiredError();
+      const required = [
+        {id: 'modelSelect', name: 'Модель гарнитура'},
+        {id: 'buyer', name: 'Покупатель'},
+        {id: 'worker', name: 'Кладовщик'},
+        {id: 'date', name: 'Дата'}
+      ];
+      const missing = required.filter(item => {
+        const el = $(item.id);
+        return !el || !String(el.value || '').trim();
+      });
+      if (!missing.length) return true;
+      missing.forEach(item => {
+        const el = $(item.id);
+        if (el) el.classList.add('required-error');
+      });
+      const alertBox = $('formAlert');
+      if (alertBox) {
+        alertBox.innerHTML = 'Заполните обязательные поля: ' + missing.map(item => escapeHtml(item.name)).join(', ') + '.';
+        alertBox.classList.add('show');
+      }
+      const first = $(missing[0].id);
+      if (first) first.focus();
+      return false;
+    }
+
+    function clearRequiredError() {
+      ['modelSelect','buyer','worker','date'].forEach(id => {
+        const el = $(id);
+        if (el) el.classList.remove('required-error');
+      });
+      const alertBox = $('formAlert');
+      if (alertBox) {
+        alertBox.textContent = '';
+        alertBox.classList.remove('show');
+      }
     }
 
     function clearHistory() {
