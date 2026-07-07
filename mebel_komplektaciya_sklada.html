@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Комплектация мебели</title>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --dark: #111827;
+      --border: #e5e7eb;
+      --ok: #16a34a;
+      --warn: #f59e0b;
+      --danger: #dc2626;
+      --shadow: 0 10px 25px rgba(17, 24, 39, 0.08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 18px;
+    }
+
+    .app {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    .topbar {
+      background: var(--dark);
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .topbar .subtitle {
+      margin-top: 4px;
+      color: #d1d5db;
+      font-size: 14px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button, select, input, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform .05s ease, opacity .15s ease;
+    }
+
+    button:active { transform: scale(.98); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    .btn-light { background: #fff; color: var(--dark); }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-ok { background: var(--ok); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-muted { background: #e5e7eb; color: #111827; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      outline: none;
+      min-height: 42px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+    }
+
+    .field { margin-bottom: 12px; }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .metric {
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .metric .value {
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .metric .name {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .progress-wrap {
+      height: 12px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .progress {
+      height: 100%;
+      width: 0%;
+      background: var(--ok);
+      transition: width .2s ease;
+    }
+
+    .status {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .status.done {
+      background: #dcfce7;
+      border-color: #86efac;
+      color: #166534;
+    }
+
+    .parts-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .parts-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .part {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 14px;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      cursor: pointer;
+      min-height: 72px;
+      user-select: none;
+    }
+
+    .part.checked {
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+
+    .part-num {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: #111827;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 17px;
+    }
+
+    .part.checked .part-num { background: var(--ok); }
+
+    .part-name {
+      font-weight: 800;
+      margin-bottom: 3px;
+    }
+
+    .part-code {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .checkmark {
+      font-size: 28px;
+      color: #d1d5db;
+      font-weight: 900;
+    }
+
+    .part.checked .checkmark { color: var(--ok); }
+
+    .small-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .model-editor {
+      display: none;
+      margin-top: 12px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+
+    .model-editor.show { display: block; }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 8px;
+      max-height: 220px;
+      overflow: auto;
+    }
+
+    .history-item {
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+    }
+
+    .history-item b { display: block; margin-bottom: 3px; }
+
+    @media (max-width: 900px) {
+      body { padding: 10px; }
+      .grid { grid-template-columns: 1fr; }
+      .parts-list { grid-template-columns: 1fr; }
+      .topbar h1 { font-size: 20px; }
+      .actions button { flex: 1; }
+    }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .topbar, .sidebar-actions, .parts-toolbar, .model-editor, .history-card { display: none !important; }
+      .app { max-width: none; }
+      .grid { display: block; }
+      .card { box-shadow: none; border: none; padding: 0; }
+      .parts-list { grid-template-columns: repeat(2, 1fr); }
+      .part { break-inside: avoid; min-height: 58px; }
+      .part-num { background: #fff !important; color: #000 !important; border: 1px solid #000; }
+      .checkmark { color: #000 !important; }
+      .status { border: 1px solid #000; color: #000; background: #fff; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1>Комплектация мебели</h1>
+        <div class="subtitle">Отпуск спального гарнитура по 20 деталям</div>
+      </div>
+      <div class="actions">
+        <button class="btn-light" onclick="window.print()">Печать / PDF</button>
+        <button class="btn-ok" onclick="completeSet()">Комплект собран</button>
+        <button class="btn-danger" onclick="resetChecklist()">Очистить</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="card">
+        <h2>Данные отпуска</h2>
+
+        <div class="field">
+          <label>Модель гарнитура</label>
+          <select id="modelSelect"></select>
+        </div>
+
+        <div class="small-row">
+          <div class="field">
+            <label>Номер заказа</label>
+            <input id="orderNumber" placeholder="Напр. 1548" />
+          </div>
+          <div class="field">
+            <label>Покупатель</label>
+            <input id="buyer" placeholder="Оптовик" />
+          </div>
+        </div>
+
+        <div class="small-row">
+          <div class="field">
+            <label>Кладовщик</label>
+            <input id="worker" placeholder="ФИО" />
+          </div>
+          <div class="field">
+            <label>Дата</label>
+            <input id="date" type="date" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Комментарий</label>
+          <textarea id="comment" rows="3" placeholder="Например: самовывоз, частичная отгрузка, замечания"></textarea>
+        </div>
+
+        <div class="summary">
+          <div class="metric"><div class="value" id="totalCount">20</div><div class="name">Всего</div></div>
+          <div class="metric"><div class="value" id="checkedCount">0</div><div class="name">Отмечено</div></div>
+          <div class="metric"><div class="value" id="leftCount">20</div><div class="name">Осталось</div></div>
+        </div>
+        <div class="progress-wrap"><div class="progress" id="progress"></div></div>
+        <div class="status" id="statusBox">Комплект не завершен</div>
+
+        <div class="sidebar-actions" style="margin-top:14px; display:grid; gap:8px;">
+          <button class="btn-primary" onclick="toggleModelEditor()">Редактировать список деталей</button>
+          <button class="btn-muted" onclick="markAll()">Отметить все</button>
+        </div>
+
+        <div class="model-editor" id="modelEditor">
+          <h2>Редактор модели</h2>
+          <p class="hint">Введите 20 деталей, каждая с новой строки. Можно писать: <b>1. Деталь</b> или просто название.</p>
+          <div class="field">
+            <label>Название модели</label>
+            <input id="newModelName" placeholder="Напр. Верона" />
+          </div>
+          <div class="field">
+            <label>Детали</label>
+            <textarea id="partsTextarea" rows="12"></textarea>
+          </div>
+          <button class="btn-primary" onclick="saveCurrentModel()">Сохранить модель</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="parts-toolbar">
+          <h2 style="margin:0;">Список деталей</h2>
+          <div class="hint">Нажмите на деталь, чтобы поставить или снять галочку</div>
+        </div>
+        <div class="parts-list" id="partsList"></div>
+      </section>
+    </main>
+
+    <section class="card history-card" style="margin-top:18px;">
+      <div class="parts-toolbar">
+        <h2 style="margin:0;">История завершенных комплектов</h2>
+        <button class="btn-muted" onclick="clearHistory()">Очистить историю</button>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </section>
+  </div>
+
+  <script>
+    const defaultModels = {
+      "Спальный гарнитур": [
+        "Кровать: изголовье", "Кровать: изножье", "Кровать: боковина левая", "Кровать: боковина правая",
+        "Основание кровати", "Шкаф: боковина левая", "Шкаф: боковина правая", "Шкаф: верх",
+        "Шкаф: низ", "Шкаф: дверь 1", "Шкаф: дверь 2", "Шкаф: дверь 3",
+        "Комод: корпус", "Комод: фасады", "Тумба левая: корпус", "Тумба левая: фасад",
+        "Тумба правая: корпус", "Тумба правая: фасад", "Зеркало", "Фурнитура / комплектующие"
+      ],
+      "Спальня Люкс": Array.from({length: 20}, (_, i) => `Деталь ${i + 1}`),
+      "Спальня Стандарт": Array.from({length: 20}, (_, i) => `Деталь ${i + 1}`)
+    };
+
+    let models = JSON.parse(localStorage.getItem('furnitureModels') || 'null') || defaultModels;
+    let currentModel = localStorage.getItem('currentFurnitureModel') || Object.keys(models)[0];
+    let checked = JSON.parse(localStorage.getItem('currentCheckedParts') || '{}');
+
+    const $ = id => document.getElementById(id);
+
+    function init() {
+      $('date').value = new Date().toISOString().slice(0, 10);
+      ['orderNumber','buyer','worker','comment'].forEach(id => {
+        $(id).value = localStorage.getItem('field_' + id) || '';
+        $(id).addEventListener('input', () => localStorage.setItem('field_' + id, $(id).value));
+      });
+      $('date').addEventListener('input', () => localStorage.setItem('field_date', $('date').value));
+      $('date').value = localStorage.getItem('field_date') || $('date').value;
+      renderModelSelect();
+      renderParts();
+      renderHistory();
+    }
+
+    function renderModelSelect() {
+      const select = $('modelSelect');
+      select.innerHTML = '';
+      Object.keys(models).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
+      if (!models[currentModel]) currentModel = Object.keys(models)[0];
+      select.value = currentModel;
+      select.onchange = () => {
+        currentModel = select.value;
+        checked = {};
+        localStorage.setItem('currentFurnitureModel', currentModel);
+        localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
+        renderParts();
+      };
+    }
+
+    function renderParts() {
+      const parts = models[currentModel] || [];
+      const list = $('partsList');
+      list.innerHTML = '';
+
+      parts.forEach((name, index) => {
+        const num = index + 1;
+        const div = document.createElement('div');
+        div.className = 'part' + (checked[num] ? ' checked' : '');
+        div.onclick = () => togglePart(num);
+        div.innerHTML = `
+          <div class="part-num">${num}</div>
+          <div>
+            <div class="part-name">${escapeHtml(cleanPartName(name, num))}</div>
+            <div class="part-code">Деталь №${num}</div>
+          </div>
+          <div class="checkmark">${checked[num] ? '✓' : '□'}</div>
+        `;
+        list.appendChild(div);
+      });
+
+      $('totalCount').textContent = parts.length;
+      updateSummary();
+      fillEditor();
+    }
+
+    function togglePart(num) {
+      checked[num] = !checked[num];
+      if (!checked[num]) delete checked[num];
+      localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
+      renderParts();
+    }
+
+    function updateSummary() {
+      const total = (models[currentModel] || []).length;
+      const count = Object.keys(checked).length;
+      $('checkedCount').textContent = count;
+      $('leftCount').textContent = total - count;
+      $('progress').style.width = total ? `${Math.round(count / total * 100)}%` : '0%';
+      const done = total > 0 && count === total;
+      $('statusBox').textContent = done ? 'Комплект полностью собран' : `Комплект не завершен: осталось ${total - count}`;
+      $('statusBox').className = 'status' + (done ? ' done' : '');
+    }
+
+    function markAll() {
+      const parts = models[currentModel] || [];
+      checked = {};
+      parts.forEach((_, i) => checked[i + 1] = true);
+      localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
+      renderParts();
+    }
+
+    function resetChecklist() {
+      if (!confirm('Очистить текущие отметки?')) return;
+      checked = {};
+      localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
+      renderParts();
+    }
+
+    function completeSet() {
+      const total = (models[currentModel] || []).length;
+      const count = Object.keys(checked).length;
+      if (count !== total) {
+        alert(`Комплект не завершен. Осталось деталей: ${total - count}`);
+        return;
+      }
+      const item = {
+        model: currentModel,
+        order: $('orderNumber').value.trim(),
+        buyer: $('buyer').value.trim(),
+        worker: $('worker').value.trim(),
+        date: $('date').value,
+        time: new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'}),
+        comment: $('comment').value.trim()
+      };
+      const history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
+      history.unshift(item);
+      localStorage.setItem('completedFurnitureSets', JSON.stringify(history.slice(0, 100)));
+      renderHistory();
+      alert('Комплект сохранен в историю. Теперь можно печатать отчет или начать новый отпуск.');
+    }
+
+    function renderHistory() {
+      const history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
+      const box = $('historyList');
+      if (!history.length) {
+        box.innerHTML = '<div class="hint">Пока нет завершенных комплектов.</div>';
+        return;
+      }
+      box.innerHTML = history.map(h => `
+        <div class="history-item">
+          <b>${escapeHtml(h.date || '')} ${escapeHtml(h.time || '')} — ${escapeHtml(h.model || '')}</b>
+          Заказ: ${escapeHtml(h.order || 'не указан')} · Покупатель: ${escapeHtml(h.buyer || 'не указан')} · Кладовщик: ${escapeHtml(h.worker || 'не указан')}
+          ${h.comment ? `<div>Комментарий: ${escapeHtml(h.comment)}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    function clearHistory() {
+      if (!confirm('Очистить всю историю?')) return;
+      localStorage.removeItem('completedFurnitureSets');
+      renderHistory();
+    }
+
+    function toggleModelEditor() {
+      $('modelEditor').classList.toggle('show');
+      fillEditor();
+    }
+
+    function fillEditor() {
+      $('newModelName').value = currentModel;
+      $('partsTextarea').value = (models[currentModel] || []).map((p, i) => `${i + 1}. ${cleanPartName(p, i + 1)}`).join('\n');
+    }
+
+    function saveCurrentModel() {
+      const name = $('newModelName').value.trim();
+      const lines = $('partsTextarea').value.split('\n').map(x => x.trim()).filter(Boolean);
+      if (!name) return alert('Введите название модели.');
+      if (lines.length !== 20) return alert(`Нужно ровно 20 деталей. Сейчас: ${lines.length}`);
+      models[name] = lines.map((line, i) => cleanPartName(line, i + 1));
+      currentModel = name;
+      checked = {};
+      localStorage.setItem('furnitureModels', JSON.stringify(models));
+      localStorage.setItem('currentFurnitureModel', currentModel);
+      localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
+      renderModelSelect();
+      renderParts();
+      alert('Модель сохранена.');
+    }
+
+    function cleanPartName(text, num) {
+      return String(text).replace(new RegExp('^\\s*' + num + '[.)-]?\\s*'), '').trim();
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[s]));
+    }
+
+    init();
+  </script>
+</body>
+</html>
