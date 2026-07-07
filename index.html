@@ -665,7 +665,7 @@
       $('leftCount').textContent = total - count;
       $('progress').style.width = total ? `${Math.round(count / total * 100)}%` : '0%';
       const done = total > 0 && count === total;
-      $('statusBox').textContent = shipmentCompleted ? `Комплект завершен и сохранен в журнал: ${currentShipmentId}` : (done ? 'Комплект полностью собран. Сохраняю в журнал...' : `Комплект не завершен: осталось ${total - count}`);
+      $('statusBox').textContent = shipmentCompleted ? `Комплект завершен и сохранен в журнал: ${currentShipmentId}` : (done ? 'Все детали собраны. Отгрузка ожидает подтверждения.' : `Комплект не завершен: осталось ${total - count}`);
       $('statusBox').className = 'status' + ((done || shipmentCompleted) ? ' done' : '');
       $('lockedNote').className = 'locked-note' + (shipmentCompleted ? ' show' : '');
       $('markAllBtn').disabled = shipmentCompleted;
@@ -703,11 +703,16 @@
       const total = (models[currentModel] || []).length;
       const count = Object.keys(checked).length;
       if (!shipmentCompleted && total > 0 && count === total) {
-        completeSet(true);
+        const confirmed = confirm('Все детали собраны. Подтвердить отгрузку?');
+        if (confirmed) {
+          completeSet();
+        } else {
+          updateSummary();
+        }
       }
     }
 
-    function completeSet(isAuto = false) {
+    function completeSet() {
       const total = (models[currentModel] || []).length;
       const count = Object.keys(checked).length;
       if (shipmentCompleted) return;
@@ -751,7 +756,7 @@
       localStorage.setItem('currentShipmentCompleted', 'true');
       renderHistory();
       renderParts();
-      if (isAuto) alert(`Комплект автоматически сохранен в журнал.
+      alert(`Отгрузка подтверждена и сохранена в журнал.
 Номер записи: ${currentShipmentId}`);
     }
 
