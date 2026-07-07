@@ -224,6 +224,18 @@
       background: #f0fdf4;
     }
 
+    .part.locked {
+      cursor: not-allowed;
+      opacity: .86;
+    }
+
+    .part-time {
+      color: var(--ok);
+      font-size: 12px;
+      margin-top: 3px;
+      font-weight: 700;
+    }
+
     .part-num {
       width: 42px;
       height: 42px;
@@ -281,9 +293,87 @@
     .history-list {
       display: grid;
       gap: 8px;
-      max-height: 220px;
+      max-height: 280px;
       overflow: auto;
     }
+
+    .journal-table-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .journal-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 860px;
+      font-size: 13px;
+    }
+
+    .journal-table th {
+      background: var(--dark);
+      color: #fff;
+      text-align: left;
+      padding: 10px;
+      white-space: nowrap;
+    }
+
+    .journal-table td {
+      border-top: 1px solid var(--border);
+      padding: 10px;
+      vertical-align: top;
+    }
+
+    .journal-table tr:nth-child(even) td { background: #f9fafb; }
+
+    .payment-select-paid {
+      background: #dcfce7 !important;
+      border-color: #86efac !important;
+      color: #166534 !important;
+      font-weight: 800;
+    }
+
+    .payment-select-unpaid {
+      background: #fee2e2 !important;
+      border-color: #fecaca !important;
+      color: #991b1b !important;
+      font-weight: 800;
+    }
+
+    .payment-badge {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .payment-badge.paid {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+
+    .payment-badge.unpaid {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .locked-note {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+      font-size: 13px;
+      font-weight: 700;
+      display: none;
+    }
+
+    .locked-note.show { display: block; }
 
     .history-item {
       background: #f9fafb;
@@ -326,7 +416,7 @@
       </div>
       <div class="actions">
         <button class="btn-light" onclick="window.print()">Печать / PDF</button>
-        <button class="btn-ok" onclick="completeSet()">Комплект собран</button>
+        <button class="btn-ok" id="newShipmentBtn" onclick="newShipment()">Новый комплект</button>
         <button class="btn-danger" onclick="resetChecklist()">Очистить</button>
       </div>
     </header>
@@ -351,6 +441,14 @@
           </div>
         </div>
 
+
+          <div class="field">
+            <label>Оплата</label>
+            <select id="paymentStatus">
+              <option value="Оплачено">Оплачено</option>
+              <option value="Не оплачено">Не оплачено</option>
+            </select>
+          </div>
         <div class="small-row">
           <div class="field">
             <label>Кладовщик</label>
@@ -374,10 +472,11 @@
         </div>
         <div class="progress-wrap"><div class="progress" id="progress"></div></div>
         <div class="status" id="statusBox">Комплект не завершен</div>
+        <div class="locked-note" id="lockedNote">Комплект уже завершен и сохранен в журнал. Для следующей отгрузки нажмите «Новый комплект».</div>
 
         <div class="sidebar-actions" style="margin-top:14px; display:grid; gap:8px;">
-          <button class="btn-primary" onclick="toggleModelEditor()">Редактировать список деталей</button>
-          <button class="btn-muted" onclick="markAll()">Отметить все</button>
+          <button class="btn-primary" id="editModelBtn" onclick="toggleModelEditor()">Редактировать список деталей</button>
+          <button class="btn-muted" id="markAllBtn" onclick="markAll()">Отметить все</button>
         </div>
 
         <div class="model-editor" id="modelEditor">
@@ -406,9 +505,14 @@
 
     <section class="card history-card" style="margin-top:18px;">
       <div class="parts-toolbar">
-        <h2 style="margin:0;">История завершенных комплектов</h2>
-        <button class="btn-muted" onclick="clearHistory()">Очистить историю</button>
+        <h2 style="margin:0;">Журнал отгрузок</h2>
+        <div class="actions">
+          <button class="btn-muted" onclick="exportJournalCSV()">Скачать CSV</button>
+          <button class="btn-muted" onclick="printJournal()">Печать журнала</button>
+          <button class="btn-danger" onclick="clearHistory()">Очистить журнал</button>
+        </div>
       </div>
+      <div class="hint" style="margin-bottom:10px;">Журнал хранится в этом браузере. Для передачи бухгалтеру или руководителю используйте «Скачать CSV».</div>
       <div class="history-list" id="historyList"></div>
     </section>
   </div>
@@ -429,17 +533,27 @@
     let models = JSON.parse(localStorage.getItem('furnitureModels') || 'null') || defaultModels;
     let currentModel = localStorage.getItem('currentFurnitureModel') || Object.keys(models)[0];
     let checked = JSON.parse(localStorage.getItem('currentCheckedParts') || '{}');
+    let checkedTimes = JSON.parse(localStorage.getItem('currentCheckedPartTimes') || '{}');
+    let currentShipmentId = localStorage.getItem('currentShipmentId') || makeShipmentId();
+    let shipmentCompleted = localStorage.getItem('currentShipmentCompleted') === 'true';
 
     const $ = id => document.getElementById(id);
 
     function init() {
+      if (!localStorage.getItem('currentShipmentId')) localStorage.setItem('currentShipmentId', currentShipmentId);
       $('date').value = new Date().toISOString().slice(0, 10);
-      ['orderNumber','buyer','worker','comment'].forEach(id => {
+      ['orderNumber','buyer','worker','comment','paymentStatus'].forEach(id => {
         $(id).value = localStorage.getItem('field_' + id) || '';
         $(id).addEventListener('input', () => localStorage.setItem('field_' + id, $(id).value));
       });
       $('date').addEventListener('input', () => localStorage.setItem('field_date', $('date').value));
+      $('paymentStatus').addEventListener('change', () => {
+        localStorage.setItem('field_paymentStatus', $('paymentStatus').value);
+        updatePaymentStyle();
+      });
       $('date').value = localStorage.getItem('field_date') || $('date').value;
+      $('paymentStatus').value = localStorage.getItem('field_paymentStatus') || 'Оплачено';
+      updatePaymentStyle();
       renderModelSelect();
       renderParts();
       renderHistory();
@@ -459,8 +573,12 @@
       select.onchange = () => {
         currentModel = select.value;
         checked = {};
+        checkedTimes = {};
+        shipmentCompleted = false;
         localStorage.setItem('currentFurnitureModel', currentModel);
         localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
+        localStorage.setItem('currentCheckedPartTimes', JSON.stringify(checkedTimes));
+        localStorage.setItem('currentShipmentCompleted', 'false');
         renderParts();
       };
     }
@@ -473,13 +591,15 @@
       parts.forEach((name, index) => {
         const num = index + 1;
         const div = document.createElement('div');
-        div.className = 'part' + (checked[num] ? ' checked' : '');
+        div.className = 'part' + (checked[num] ? ' checked' : '') + (shipmentCompleted ? ' locked' : '');
         div.onclick = () => togglePart(num);
+        const timeHtml = checkedTimes[num] ? `<div class="part-time">Отпущено: ${escapeHtml(checkedTimes[num])}</div>` : '';
         div.innerHTML = `
           <div class="part-num">${num}</div>
           <div>
             <div class="part-name">${escapeHtml(cleanPartName(name, num))}</div>
             <div class="part-code">Деталь №${num}</div>
+            ${timeHtml}
           </div>
           <div class="checkmark">${checked[num] ? '✓' : '□'}</div>
         `;
@@ -492,10 +612,18 @@
     }
 
     function togglePart(num) {
+      if (shipmentCompleted) return;
       checked[num] = !checked[num];
-      if (!checked[num]) delete checked[num];
+      if (checked[num]) {
+        checkedTimes[num] = new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+      } else {
+        delete checked[num];
+        delete checkedTimes[num];
+      }
       localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
+      localStorage.setItem('currentCheckedPartTimes', JSON.stringify(checkedTimes));
       renderParts();
+      autoCompleteIfReady();
     }
 
     function updateSummary() {
@@ -505,68 +633,219 @@
       $('leftCount').textContent = total - count;
       $('progress').style.width = total ? `${Math.round(count / total * 100)}%` : '0%';
       const done = total > 0 && count === total;
-      $('statusBox').textContent = done ? 'Комплект полностью собран' : `Комплект не завершен: осталось ${total - count}`;
-      $('statusBox').className = 'status' + (done ? ' done' : '');
+      $('statusBox').textContent = shipmentCompleted ? `Комплект завершен и сохранен в журнал: ${currentShipmentId}` : (done ? 'Комплект полностью собран. Сохраняю в журнал...' : `Комплект не завершен: осталось ${total - count}`);
+      $('statusBox').className = 'status' + ((done || shipmentCompleted) ? ' done' : '');
+      $('lockedNote').className = 'locked-note' + (shipmentCompleted ? ' show' : '');
+      $('markAllBtn').disabled = shipmentCompleted;
+      $('editModelBtn').disabled = shipmentCompleted;
+      $('modelSelect').disabled = shipmentCompleted;
     }
 
     function markAll() {
+      if (shipmentCompleted) return;
       const parts = models[currentModel] || [];
       checked = {};
-      parts.forEach((_, i) => checked[i + 1] = true);
+      checkedTimes = {};
+      const now = new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+      parts.forEach((_, i) => { checked[i + 1] = true; checkedTimes[i + 1] = now; });
       localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
+      localStorage.setItem('currentCheckedPartTimes', JSON.stringify(checkedTimes));
       renderParts();
+      autoCompleteIfReady();
     }
 
     function resetChecklist() {
+      if (shipmentCompleted) {
+        alert('Комплект уже сохранен в журнал. Для следующей отгрузки нажмите «Новый комплект».');
+        return;
+      }
       if (!confirm('Очистить текущие отметки?')) return;
       checked = {};
+      checkedTimes = {};
       localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
+      localStorage.setItem('currentCheckedPartTimes', JSON.stringify(checkedTimes));
       renderParts();
     }
 
-    function completeSet() {
+    function autoCompleteIfReady() {
       const total = (models[currentModel] || []).length;
       const count = Object.keys(checked).length;
+      if (!shipmentCompleted && total > 0 && count === total) {
+        completeSet(true);
+      }
+    }
+
+    function completeSet(isAuto = false) {
+      const total = (models[currentModel] || []).length;
+      const count = Object.keys(checked).length;
+      if (shipmentCompleted) return;
       if (count !== total) {
         alert(`Комплект не завершен. Осталось деталей: ${total - count}`);
         return;
       }
+
+      const history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
+      const exists = history.some(h => h.shipmentId === currentShipmentId);
+      if (exists) {
+        shipmentCompleted = true;
+        localStorage.setItem('currentShipmentCompleted', 'true');
+        updateSummary();
+        return;
+      }
+
+      const now = new Date();
+      const parts = models[currentModel] || [];
       const item = {
+        shipmentId: currentShipmentId,
         model: currentModel,
         order: $('orderNumber').value.trim(),
         buyer: $('buyer').value.trim(),
         worker: $('worker').value.trim(),
         date: $('date').value,
-        time: new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'}),
-        comment: $('comment').value.trim()
+        time: now.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'}),
+        comment: $('comment').value.trim(),
+        paymentStatus: $('paymentStatus').value || 'Оплачено',
+        totalParts: total,
+        status: 'Отпущено',
+        parts: parts.map((name, i) => ({
+          number: i + 1,
+          name: cleanPartName(name, i + 1),
+          time: checkedTimes[i + 1] || ''
+        }))
       };
-      const history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
       history.unshift(item);
-      localStorage.setItem('completedFurnitureSets', JSON.stringify(history.slice(0, 100)));
+      localStorage.setItem('completedFurnitureSets', JSON.stringify(history.slice(0, 500)));
+      shipmentCompleted = true;
+      localStorage.setItem('currentShipmentCompleted', 'true');
       renderHistory();
-      alert('Комплект сохранен в историю. Теперь можно печатать отчет или начать новый отпуск.');
+      renderParts();
+      if (isAuto) alert(`Комплект автоматически сохранен в журнал.
+Номер записи: ${currentShipmentId}`);
+    }
+
+    function newShipment() {
+      const count = Object.keys(checked).length;
+      if (!shipmentCompleted && count > 0 && !confirm('Текущий комплект не завершен. Начать новый комплект и очистить отметки?')) return;
+      checked = {};
+      checkedTimes = {};
+      shipmentCompleted = false;
+      currentShipmentId = makeShipmentId();
+      ['orderNumber','buyer','comment'].forEach(id => {
+        $(id).value = '';
+        localStorage.removeItem('field_' + id);
+      });
+      $('date').value = new Date().toISOString().slice(0, 10);
+      $('paymentStatus').value = 'Оплачено';
+      localStorage.setItem('field_date', $('date').value);
+      localStorage.setItem('field_paymentStatus', $('paymentStatus').value);
+      updatePaymentStyle();
+      localStorage.setItem('currentShipmentId', currentShipmentId);
+      localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
+      localStorage.setItem('currentCheckedPartTimes', JSON.stringify(checkedTimes));
+      localStorage.setItem('currentShipmentCompleted', 'false');
+      renderParts();
     }
 
     function renderHistory() {
       const history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
       const box = $('historyList');
       if (!history.length) {
-        box.innerHTML = '<div class="hint">Пока нет завершенных комплектов.</div>';
+        box.innerHTML = '<div class="hint">Пока нет завершенных отгрузок.</div>';
         return;
       }
-      box.innerHTML = history.map(h => `
-        <div class="history-item">
-          <b>${escapeHtml(h.date || '')} ${escapeHtml(h.time || '')} — ${escapeHtml(h.model || '')}</b>
-          Заказ: ${escapeHtml(h.order || 'не указан')} · Покупатель: ${escapeHtml(h.buyer || 'не указан')} · Кладовщик: ${escapeHtml(h.worker || 'не указан')}
-          ${h.comment ? `<div>Комментарий: ${escapeHtml(h.comment)}</div>` : ''}
+      box.innerHTML = `
+        <div class="journal-table-wrap">
+          <table class="journal-table">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Время</th>
+                <th>Заказ</th>
+                <th>Покупатель</th>
+                <th>Модель</th>
+                <th>Кладовщик</th>
+                <th>Деталей</th>
+                <th>Оплата</th>
+                <th>Статус</th>
+                <th>Запись</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${history.map(h => `
+                <tr>
+                  <td>${escapeHtml(h.date || '')}</td>
+                  <td>${escapeHtml(h.time || '')}</td>
+                  <td>${escapeHtml(h.order || 'не указан')}</td>
+                  <td>${escapeHtml(h.buyer || 'не указан')}</td>
+                  <td>${escapeHtml(h.model || '')}</td>
+                  <td>${escapeHtml(h.worker || 'не указан')}</td>
+                  <td>${escapeHtml(h.totalParts || 20)}</td>
+                  <td>${paymentBadge(h.paymentStatus || 'Оплачено')}</td>
+                  <td>${escapeHtml(h.status || 'Отпущено')}</td>
+                  <td>${escapeHtml(h.shipmentId || '')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
         </div>
-      `).join('');
+      `;
     }
 
     function clearHistory() {
-      if (!confirm('Очистить всю историю?')) return;
+      if (!confirm('Очистить весь журнал отгрузок?')) return;
       localStorage.removeItem('completedFurnitureSets');
       renderHistory();
+    }
+
+    function exportJournalCSV() {
+      const history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
+      if (!history.length) return alert('Журнал пуст.');
+      const rows = [
+        ['Дата','Время','Заказ','Покупатель','Модель','Кладовщик','Деталей','Оплата','Статус','Номер записи','Комментарий']
+      ];
+      history.forEach(h => rows.push([h.date || '', h.time || '', h.order || '', h.buyer || '', h.model || '', h.worker || '', h.totalParts || 20, h.paymentStatus || 'Оплачено', h.status || 'Отпущено', h.shipmentId || '', h.comment || '']));
+      const csv = rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(';')).join('\n');
+      const blob = new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `zhurnal_otgruzok_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function printJournal() {
+      const history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
+      if (!history.length) return alert('Журнал пуст.');
+      const html = `
+        <!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Журнал отгрузок</title>
+        <style>body{font-family:Arial,sans-serif;padding:20px;color:#111827}h1{font-size:22px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#111827;color:#fff}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}</style></head><body>
+        <h1>Журнал отгрузок мебели</h1>
+        <table><thead><tr><th>Дата</th><th>Время</th><th>Заказ</th><th>Покупатель</th><th>Модель</th><th>Кладовщик</th><th>Деталей</th><th>Оплата</th><th>Статус</th><th>Запись</th></tr></thead>
+        <tbody>${history.map(h => `<tr><td>${escapeHtml(h.date||'')}</td><td>${escapeHtml(h.time||'')}</td><td>${escapeHtml(h.order||'')}</td><td>${escapeHtml(h.buyer||'')}</td><td>${escapeHtml(h.model||'')}</td><td>${escapeHtml(h.worker||'')}</td><td>${escapeHtml(h.totalParts||20)}</td><td>${escapeHtml(h.paymentStatus||'Оплачено')}</td><td>${escapeHtml(h.status||'Отпущено')}</td><td>${escapeHtml(h.shipmentId||'')}</td></tr>`).join('')}</tbody></table>
+        </body></html>`;
+      const w = window.open('', '_blank');
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
+
+    function updatePaymentStyle() {
+      const select = $('paymentStatus');
+      if (!select) return;
+      const isPaid = select.value === 'Оплачено';
+      select.classList.toggle('payment-select-paid', isPaid);
+      select.classList.toggle('payment-select-unpaid', !isPaid);
+    }
+
+    function paymentBadge(status) {
+      const normalized = status === 'Не оплачено' ? 'Не оплачено' : 'Оплачено';
+      const cls = normalized === 'Оплачено' ? 'paid' : 'unpaid';
+      return `<span class="payment-badge ${cls}">${escapeHtml(normalized)}</span>`;
     }
 
     function toggleModelEditor() {
@@ -587,12 +866,27 @@
       models[name] = lines.map((line, i) => cleanPartName(line, i + 1));
       currentModel = name;
       checked = {};
+      checkedTimes = {};
+      shipmentCompleted = false;
       localStorage.setItem('furnitureModels', JSON.stringify(models));
       localStorage.setItem('currentFurnitureModel', currentModel);
       localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
+      localStorage.setItem('currentCheckedPartTimes', JSON.stringify(checkedTimes));
+      localStorage.setItem('currentShipmentCompleted', 'false');
       renderModelSelect();
       renderParts();
       alert('Модель сохранена.');
+    }
+
+    function makeShipmentId() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const h = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      const sec = String(d.getSeconds()).padStart(2, '0');
+      return `OTG-${y}${m}${day}-${h}${min}${sec}`;
     }
 
     function cleanPartName(text, num) {
