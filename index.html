@@ -206,8 +206,8 @@
     }
 
     .part {
-      border: 1px solid var(--border);
-      background: #fff;
+      border: 1px solid #f5b5b5;
+      background: #fee2e2;
       border-radius: 14px;
       padding: 12px;
       display: grid;
@@ -217,11 +217,17 @@
       cursor: pointer;
       min-height: 72px;
       user-select: none;
+      transition: background .25s ease, border-color .25s ease, opacity .25s ease;
+    }
+
+    .part:hover:not(.checked) {
+      background: #fecaca;
+      border-color: #ef4444;
     }
 
     .part.checked {
-      border-color: #86efac;
-      background: #f0fdf4;
+      border-color: #4ade80;
+      background: #dcfce7;
     }
 
     .part.locked {
@@ -240,13 +246,14 @@
       width: 42px;
       height: 42px;
       border-radius: 12px;
-      background: #111827;
+      background: #b91c1c;
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 800;
       font-size: 17px;
+      transition: background .25s ease;
     }
 
     .part.checked .part-num { background: var(--ok); }
@@ -263,8 +270,9 @@
 
     .checkmark {
       font-size: 28px;
-      color: #d1d5db;
+      color: #b91c1c;
       font-weight: 900;
+      transition: color .25s ease;
     }
 
     .part.checked .checkmark { color: var(--ok); }
@@ -625,7 +633,7 @@
             <div class="part-code">Деталь №${num}</div>
             ${timeHtml}
           </div>
-          <div class="checkmark">${checked[num] ? '✓' : '□'}</div>
+          <div class="checkmark">${checked[num] ? '✓' : '✗'}</div>
         `;
         list.appendChild(div);
       });
