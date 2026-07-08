@@ -516,7 +516,7 @@
     <header class="topbar">
       <div>
         <h1>Комплектация мебели</h1>
-        <div class="subtitle">Отпуск спального гарнитура по 20 деталям</div>
+        <div class="subtitle">Отпуск спального гарнитура по фактической комплектации</div>
       </div>
       <div class="actions">
         <button class="btn-light" onclick="window.print()">Печать / PDF</button>
@@ -580,7 +580,7 @@
 
         <div class="model-editor" id="modelEditor">
           <h2>Редактор модели</h2>
-          <p class="hint">Введите 20 деталей, каждая с новой строки. Можно писать: <b>1. Деталь</b> или просто название.</p>
+          <p class="hint">Введите детали, каждая с новой строки. Можно писать: <b>1. Деталь</b> или просто название.</p>
           <div class="field">
             <label>Название модели</label>
             <input id="newModelName" placeholder="Напр. Верона" />
@@ -616,7 +616,7 @@
         <label>Ссылка Google Apps Script Web App</label>
         <input id="cloudScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" />
       </div>
-      <div class="hint">После настройки каждая подтвержденная отгрузка будет сохраняться в Google Таблицу. Журнал можно будет загрузить на другом телефоне или компьютере.</div>
+      <div class="hint">После настройки каждая подтвержденная отгрузка будет сохраняться в Google Таблицу. Отправка и загрузка работают через подтвержденный ответ Apps Script.</div>
       <div class="cloud-status" id="cloudStatus">Облако не настроено.</div>
     </section>
 
@@ -655,40 +655,720 @@
 
   <script>
     const defaultModels = {
-      "Агния 6 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Азиза 5 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Азиза 6 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Аллегро 6 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Афина 6 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Бордо 6 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Вена 5 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Венера 5 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Гарда 5 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Джамиля 5 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Лион 6 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Лорена 6 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Мадейра 6 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Мадрид 5 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Мармарис 5 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Марсель 6 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Модена 5 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Модена 5 дв (Новая!)": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Моника 4 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Моника 6 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Портофино 6 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Севилья 4 дв (1,6×2)": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Севилья 4 дв (1,8×2)": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Севилья 5 дв (1,6×2)": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Севилья 5 дв сатин (1,8×2)": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Севилья 5 дв кашемир (1,8×2)": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Сорренто 5 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "София 5 дв": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Элиза 1 (квадрат)": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Элиза 12 (овал)": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Элиза 10": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Элиза ТВ зона": Array.from({length:20},(_,i)=>`Деталь ${i+1}`),
-      "Модена ТВ зона": Array.from({length:20},(_,i)=>`Деталь ${i+1}`)
-    };
+      "Агния 6 дв": [
+            "Шкаф",
+            "8/1",
+            "8/2",
+            "8/3",
+            "8/4",
+            "8/5",
+            "8/6",
+            "8/7",
+            "8/8",
+            "Кровать",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Cтол туалетный",
+            "3/1",
+            "3/2",
+            "3/3",
+            "Тумба",
+            "2/1",
+            "2/1",
+            "2/2",
+            "2/2",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Азиза 5 дв": [
+            "Шкаф",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Кровать",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Стол туалетный",
+            "3/1",
+            "3/2",
+            "3/3",
+            "Тумба",
+            "2/1",
+            "2/1",
+            "2/2",
+            "2/2",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Азиза 6 дв": [
+            "Шкаф",
+            "7/1",
+            "7/2",
+            "7/3",
+            "7/4",
+            "7/5",
+            "7/6",
+            "7/7",
+            "Кровать",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Стол туалетный",
+            "3/1",
+            "3/2",
+            "3/3",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Аллегро 6 дв": [
+            "19/1",
+            "19/2",
+            "19/3",
+            "19/4",
+            "19/5",
+            "19/6",
+            "19/7",
+            "19/8",
+            "19/9",
+            "19/10",
+            "19/11",
+            "19/12",
+            "19/13",
+            "19/14",
+            "19/15",
+            "19/16",
+            "19/17",
+            "19/18",
+            "19/19"
+      ],
+      "Афина 6 дв": [
+            "21/1",
+            "21/2",
+            "21/3",
+            "21/4",
+            "21/5",
+            "21/6",
+            "21/7",
+            "21/8",
+            "21/9",
+            "21/10",
+            "21/11",
+            "21/12",
+            "21/13",
+            "21/14",
+            "21/15",
+            "21/16",
+            "21/17",
+            "21/18",
+            "21/19",
+            "21/20",
+            "21/21"
+      ],
+      "Бордо 6 дв": [
+            "Шкаф",
+            "8/1",
+            "8/2",
+            "8/3",
+            "8/4",
+            "8/5",
+            "8/6",
+            "8/7",
+            "8/8",
+            "Кровать",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Стол туалетный",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Тумба",
+            "3/1",
+            "3/1",
+            "3/2",
+            "3/2",
+            "3/3",
+            "3/",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Венера 5 дв": [
+            "Шкаф",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Кровать",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Комод",
+            "2/1",
+            "2/2",
+            "Тумба",
+            "2/1",
+            "2/1",
+            "2/2",
+            "2/2",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Гарда 5 дв": [
+            "Шкаф",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Кровать",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Комод",
+            "3/1",
+            "3/2",
+            "3/3",
+            "Тумба",
+            "3/1",
+            "3/2",
+            "3/3",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Джамиля 5 дв": [
+            "15/1",
+            "15/2",
+            "15/3",
+            "15/4",
+            "15/5",
+            "15/6",
+            "15/7",
+            "15/8",
+            "15/9",
+            "15/10",
+            "15/11",
+            "15/12",
+            "15/13",
+            "15/14",
+            "15/15"
+      ],
+      "Лион 6 дв": [
+            "Шкаф",
+            "10/1",
+            "10/2",
+            "10/3",
+            "10/4",
+            "10/5",
+            "10/6",
+            "10/7",
+            "10/8",
+            "10/9",
+            "10/10",
+            "Кровать",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Стол туалетный",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Тумба",
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Лорена 6 дв": [
+            "16/1",
+            "16/2",
+            "16/3",
+            "16/4",
+            "16/5",
+            "16/6",
+            "16/7",
+            "16/8",
+            "16/9",
+            "16/10",
+            "16/11",
+            "16/12",
+            "16/13",
+            "16/14",
+            "16/15",
+            "16/16"
+      ],
+      "Мадейра 6 дв": [
+            "20/1",
+            "20/2",
+            "20/3",
+            "20/4",
+            "20/5",
+            "20/6",
+            "20/7",
+            "20/8",
+            "20/9",
+            "20/10",
+            "20/11",
+            "20/12",
+            "20/13",
+            "20/14",
+            "20/15",
+            "20/16",
+            "20/17",
+            "20/18",
+            "20/19",
+            "20/20"
+      ],
+      "Мадрид 5 дв": [
+            "Шкаф",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Кровать",
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4",
+            "Комод",
+            "2/1",
+            "2/2",
+            "Тумба",
+            "2/1",
+            "2/1",
+            "2/2",
+            "2/2",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Мармарис 5 дв": [
+            "15/1",
+            "15/2",
+            "15/3",
+            "15/4",
+            "15/5",
+            "15/6",
+            "15/7",
+            "15/8",
+            "15/9",
+            "15/10",
+            "15/11",
+            "15/12",
+            "15/13",
+            "15/14",
+            "15/15"
+      ],
+      "Модена 5д Новая": [
+            "18/1",
+            "18/2",
+            "18/3",
+            "18/4",
+            "18/5",
+            "18/6",
+            "18/7",
+            "18/8",
+            "18/9",
+            "18/10",
+            "18/11",
+            "18/12",
+            "18/13",
+            "18/14",
+            "18/15",
+            "18/16",
+            "18/17",
+            "18/18"
+      ],
+      "Марсель 6 дв": [
+            "Шкаф",
+            "9/1",
+            "9/2",
+            "9/3",
+            "9/4",
+            "9/5",
+            "9/6",
+            "9/7",
+            "9/8",
+            "9/9",
+            "Кровать",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Стол туалетный",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Тумба",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Моника 4 дв": [
+            "Шкаф",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Кровать",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Стол туалетный",
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4",
+            "Тумба",
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Моника 6 дв": [
+            "Шкаф",
+            "8/1",
+            "8/2",
+            "8/3",
+            "8/4",
+            "8/5",
+            "8/6",
+            "8/7",
+            "8/8",
+            "Кровать",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Стол туалетный",
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4",
+            "Тумба",
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Портофино 6 дв": [
+            "21/1",
+            "21/2",
+            "21/3",
+            "21/4",
+            "21/5",
+            "21/6",
+            "21/7",
+            "21/8",
+            "21/9",
+            "21/10",
+            "21/11",
+            "21/12",
+            "21/13",
+            "21/14",
+            "21/15",
+            "21/16",
+            "21/17",
+            "21/18",
+            "21/19",
+            "21/20",
+            "21/21"
+      ],
+      "Севилья 4 дв 1,6*2": [
+            "Шкаф",
+            "7/1",
+            "7/2",
+            "7/3",
+            "7/4",
+            "7/5",
+            "7/6",
+            "7/7",
+            "Кровать",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Стол туалетный",
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4",
+            "Тумба",
+            "2/1",
+            "2/1",
+            "2/2",
+            "2/2",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Севилья 4 дв 1,8*2": [
+            "Шкаф",
+            "7/1",
+            "7/2",
+            "7/3",
+            "7/4",
+            "7/5",
+            "7/6",
+            "7/7",
+            "Кровать",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Стол туалетный",
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4",
+            "Тумба",
+            "2/1",
+            "2/1",
+            "2/2",
+            "2/2",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Севилья 5 дв 1,6*2": [
+            "Шкаф",
+            "7/1",
+            "7/2",
+            "7/3",
+            "7/4",
+            "7/5",
+            "7/6",
+            "7/7",
+            "Кровать",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Стол туалетный",
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4",
+            "Тумба",
+            "2/1",
+            "2/1",
+            "2/2",
+            "2/2",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Севилья 5 дв сатин 1,8*2": [
+            "Шкаф",
+            "7/1",
+            "7/2",
+            "7/3",
+            "7/4",
+            "7/5",
+            "7/6",
+            "7/7",
+            "Кровать",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Стол туалетный",
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4",
+            "Тумба",
+            "2/1",
+            "2/1",
+            "2/2",
+            "2/2",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Севилья 5 дв кашемир 1,8*2": [
+            "Шкаф",
+            "7/1",
+            "7/2",
+            "7/3",
+            "7/4",
+            "7/5",
+            "7/6",
+            "7/7",
+            "Кровать",
+            "6/1",
+            "6/2",
+            "6/3",
+            "6/4",
+            "6/5",
+            "6/6",
+            "Комод",
+            "3/1",
+            "3/2",
+            "3/3",
+            "Тумба",
+            "3/1",
+            "3/2",
+            "3/3",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Сорренто 5 дв": [
+            "13/1",
+            "13/2",
+            "13/3",
+            "13/4",
+            "13/5",
+            "13/6",
+            "13/7",
+            "13/8",
+            "13/9",
+            "13/10",
+            "13/11",
+            "13/12",
+            "13/13"
+      ],
+      "София 5 дв": [
+            "Шкаф",
+            "7/1",
+            "7/2",
+            "7/3",
+            "7/4",
+            "7/5",
+            "7/6",
+            "7/7",
+            "Кровать",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Комод",
+            "2/1",
+            "2/2",
+            "Тумба",
+            "2/1",
+            "2/1",
+            "2/2",
+            "2/2",
+            "Подзеркальник",
+            "1/1"
+      ],
+      "Элиза 1": [
+            "8/1",
+            "8/2",
+            "8/3",
+            "8/4",
+            "8/5",
+            "8/6",
+            "8/7",
+            "8/8"
+      ],
+      "Элиза 12": [
+            "11/1",
+            "11/2",
+            "11/3",
+            "11/4",
+            "11/5",
+            "11/6",
+            "11/7",
+            "11/8",
+            "11/9",
+            "11/10",
+            "11/11"
+      ],
+      "Элиза 10": [
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4"
+      ],
+      "Элиза ТВ зона": [
+            "Элиза 5",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Элиза 6",
+            "5/1",
+            "5/2",
+            "5/3",
+            "5/4",
+            "5/5",
+            "Элиза 7",
+            "4/1",
+            "4/2",
+            "4/3",
+            "4/4"
+      ],
+      "Модена ТВ зона": [
+            "Модена 1",
+            "3/1",
+            "3/2",
+            "3/3",
+            "Модена 2",
+            "3/1",
+            "3/2",
+            "3/3",
+            "Модена 3/4",
+            "3/1",
+            "3/2",
+            "3/3"
+      ]
+};
 
     let models = JSON.parse(localStorage.getItem('furnitureModels') || 'null') || defaultModels;
     let currentModel = localStorage.getItem('currentFurnitureModel') || Object.keys(models)[0];
@@ -1166,31 +1846,61 @@
         updateLocalSyncStatus(item.shipmentId, 'Не настроено');
         return;
       }
-      ensureCloudFrame();
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = cloudScriptUrl;
-      form.target = cloudFrameName;
-      form.style.display = 'none';
+      if (!navigator.onLine) {
+        const queue = getPendingCloudQueue();
+        if (!queue.some(x => x.shipmentId === item.shipmentId)) queue.push(item);
+        setPendingCloudQueue(queue);
+        updateLocalSyncStatus(item.shipmentId, 'Ожидает отправки');
+        updateCloudStatus('warn', 'Нет интернета. Запись сохранена в очередь ожидания.');
+        return;
+      }
 
-      const actionInput = document.createElement('input');
-      actionInput.name = 'action';
-      actionInput.value = 'append';
-      form.appendChild(actionInput);
+      updateLocalSyncStatus(item.shipmentId, 'Отправляется');
+      const callbackName = 'appendCloudShipmentCallback_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+      const script = document.createElement('script');
+      const timeout = setTimeout(() => {
+        cleanupCloudJsonp(callbackName, script);
+        const queue = getPendingCloudQueue();
+        if (!queue.some(x => x.shipmentId === item.shipmentId)) queue.push(item);
+        setPendingCloudQueue(queue);
+        updateLocalSyncStatus(item.shipmentId, 'Ожидает отправки');
+        updateCloudStatus('error', 'Google Sheets не ответил. Запись оставлена в очереди ожидания.');
+      }, 15000);
 
-      const dataInput = document.createElement('input');
-      dataInput.name = 'data';
-      dataInput.value = JSON.stringify(item);
-      form.appendChild(dataInput);
+      window[callbackName] = response => {
+        clearTimeout(timeout);
+        cleanupCloudJsonp(callbackName, script);
+        if (response && response.ok) {
+          const queue = getPendingCloudQueue().filter(x => x.shipmentId !== item.shipmentId);
+          setPendingCloudQueue(queue);
+          updateLocalSyncStatus(item.shipmentId, 'Отправлено');
+          updateCloudStatus('ok', `Запись ${item.shipmentId} подтверждена Google Sheets.`);
+        } else {
+          const queue = getPendingCloudQueue();
+          if (!queue.some(x => x.shipmentId === item.shipmentId)) queue.push(item);
+          setPendingCloudQueue(queue);
+          updateLocalSyncStatus(item.shipmentId, 'Ожидает отправки');
+          updateCloudStatus('error', 'Google Sheets вернул ошибку: ' + ((response && response.error) || 'неизвестная ошибка'));
+        }
+      };
 
-      document.body.appendChild(form);
-      form.submit();
-      form.remove();
+      script.id = callbackName;
+      script.src = cloudScriptUrl + '?action=append&callback=' + encodeURIComponent(callbackName) + '&data=' + encodeURIComponent(JSON.stringify(item)) + '&t=' + Date.now();
+      script.onerror = () => {
+        clearTimeout(timeout);
+        cleanupCloudJsonp(callbackName, script);
+        const queue = getPendingCloudQueue();
+        if (!queue.some(x => x.shipmentId === item.shipmentId)) queue.push(item);
+        setPendingCloudQueue(queue);
+        updateLocalSyncStatus(item.shipmentId, 'Ожидает отправки');
+        updateCloudStatus('error', 'Не удалось отправить запись. Проверьте публикацию Apps Script и доступ «Anyone».');
+      };
+      document.body.appendChild(script);
+    }
 
-      updateLocalSyncStatus(item.shipmentId, 'Отправлено');
-      const queue = getPendingCloudQueue().filter(x => x.shipmentId !== item.shipmentId);
-      setPendingCloudQueue(queue);
-      updateCloudStatus('ok', `Запись ${item.shipmentId} отправлена в Google Sheets.`);
+    function cleanupCloudJsonp(callbackName, script) {
+      try { delete window[callbackName]; } catch (err) { window[callbackName] = undefined; }
+      if (script && script.parentNode) script.parentNode.removeChild(script);
     }
 
     function syncPendingShipments() {
@@ -1213,27 +1923,34 @@
 
     function loadCloudJournal() {
       if (!cloudScriptUrl) return updateCloudStatus('warn', 'Сначала вставьте и сохраните ссылку Google Apps Script.');
-      const callbackName = 'loadCloudJournalCallback_' + Date.now();
-      window[callbackName] = data => {
+      updateCloudStatus('warn', 'Загружаю журнал из Google Sheets...');
+      const callbackName = 'loadCloudJournalCallback_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+      const script = document.createElement('script');
+      const timeout = setTimeout(() => {
+        cleanupCloudJsonp(callbackName, script);
+        updateCloudStatus('error', 'Google Sheets не ответил. Проверьте новую публикацию Apps Script и доступ «Anyone».');
+      }, 15000);
+
+      window[callbackName] = response => {
+        clearTimeout(timeout);
         try {
-          const remote = Array.isArray(data) ? data : (data && data.items) || [];
+          if (!response || response.ok === false) throw new Error((response && response.error) || 'Ошибка ответа Apps Script');
+          const remote = Array.isArray(response) ? response : (response.items || []);
           mergeCloudHistory(remote);
           updateCloudStatus('ok', `Журнал загружен из Google Sheets. Записей получено: ${remote.length}.`);
         } catch (err) {
-          updateCloudStatus('error', 'Не удалось обработать журнал из Google Sheets.');
+          updateCloudStatus('error', 'Не удалось обработать журнал из Google Sheets: ' + err.message);
         } finally {
-          delete window[callbackName];
-          const old = document.getElementById(callbackName);
-          if (old) old.remove();
+          cleanupCloudJsonp(callbackName, script);
         }
       };
-      const script = document.createElement('script');
+
       script.id = callbackName;
       script.src = cloudScriptUrl + '?action=list&callback=' + encodeURIComponent(callbackName) + '&t=' + Date.now();
       script.onerror = () => {
+        clearTimeout(timeout);
+        cleanupCloudJsonp(callbackName, script);
         updateCloudStatus('error', 'Не удалось загрузить журнал. Проверьте публикацию Apps Script и доступ «Anyone».');
-        delete window[callbackName];
-        script.remove();
       };
       document.body.appendChild(script);
     }
@@ -1288,7 +2005,7 @@
       const name = $('newModelName').value.trim();
       const lines = $('partsTextarea').value.split('\n').map(x => x.trim()).filter(Boolean);
       if (!name) return alert('Введите название модели.');
-      if (lines.length !== 20) return alert(`Нужно ровно 20 деталей. Сейчас: ${lines.length}`);
+      if (!lines.length) return alert('Добавьте хотя бы одну деталь.');
       models[name] = lines.map((line, i) => cleanPartName(line, i + 1));
       currentModel = name;
       checked = {};
