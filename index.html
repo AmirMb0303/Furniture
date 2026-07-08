@@ -411,6 +411,21 @@
       border: 1px solid #fecaca;
     }
 
+
+    .journal-payment-select {
+      min-width: 128px;
+      padding: 7px 9px;
+      min-height: 34px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .journal-payment-select:disabled {
+      cursor: wait;
+      opacity: .7;
+    }
+
     .locked-note {
       margin-top: 10px;
       padding: 10px;
@@ -567,6 +582,7 @@
       .topbar h1 { font-size: 20px; }
       .actions button { flex: 1; }
       .journal-search { grid-template-columns: 1fr; }
+      .desktop-only { display: none !important; }
     }
 
     @media print {
@@ -588,10 +604,8 @@
     <header class="topbar">
       <div>
         <h1>Комплектация мебели</h1>
-        <div class="subtitle">Отпуск спального гарнитура по фактической комплектации</div>
       </div>
       <div class="actions">
-        <button class="btn-light" onclick="window.print()">Печать / PDF</button>
         <button class="btn-ok" id="newShipmentBtn" onclick="newShipment()">Новый комплект</button>
         <button class="btn-danger" onclick="resetChecklist()">Очистить</button>
       </div>
@@ -682,10 +696,8 @@
         <h2 style="margin:0;">Журнал отгрузок</h2>
         <div class="actions">
           <button class="btn-primary" onclick="loadCloudJournal()">Обновить журнал</button>
-          <button class="btn-muted" onclick="syncPendingShipments()">Отправить ожидающие</button>
-          <button class="btn-muted" onclick="exportJournalCSV()">Скачать CSV</button>
           <button class="btn-muted" onclick="printJournal()">Печать журнала</button>
-          <button class="btn-danger" onclick="clearHistory()">Очистить журнал</button>
+          <button class="btn-danger desktop-only" onclick="clearHistory()">Очистить журнал</button>
         </div>
       </div>
       <div class="hint" style="margin-bottom:10px;">Журнал автоматически подтягивается из Google Sheets, если синхронизация настроена. Локальное хранение используется как резерв.</div>
@@ -703,8 +715,7 @@
           <div class="actions">
             <button class="btn-primary" onclick="saveCloudUrl()">Сохранить ссылку</button>
             <button class="btn-muted" onclick="loadCloudJournal()">Загрузить журнал</button>
-            <button class="btn-muted" onclick="syncPendingShipments()">Отправить ожидающие</button>
-          </div>
+            </div>
           <div class="cloud-status" id="cloudStatus">Облако не настроено.</div>
           <div class="hint">Чтобы журнал был одинаковым на всех телефонах, вставьте сюда одну и ту же ссылку Web App или пропишите ее прямо в HTML в переменной CLOUD_SCRIPT_URL.</div>
         </div>
@@ -1846,6 +1857,8 @@
                 <th>Кладовщик</th>
                 <th>Деталей</th>
                 <th>Оплата</th>
+                <th>Дата оплаты</th>
+                <th>Время оплаты</th>
                 <th>Статус</th>
                 <th>Синхр.</th>
                 <th>Запись</th>
@@ -1860,7 +1873,9 @@
                   <td>${escapeHtml(h.model || '')}</td>
                   <td>${escapeHtml(h.worker || 'не указан')}</td>
                   <td>${escapeHtml(h.totalParts || 20)}</td>
-                  <td>${paymentBadge(h.paymentStatus || 'Оплачено')}</td>
+                  <td>${paymentEditor(h)}</td>
+                  <td>${escapeHtml(h.paymentDate || '')}</td>
+                  <td>${escapeHtml(h.paymentTime || '')}</td>
                   <td>${escapeHtml(h.status || 'Отпущено')}</td>
                   <td>${syncBadge(h.cloudSync || '')}</td>
                   <td>${escapeHtml(h.shipmentId || '')}</td>
@@ -1934,9 +1949,9 @@
       const history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
       if (!history.length) return alert('Журнал пуст.');
       const rows = [
-        ['Дата','Время','Покупатель','Модель','Кладовщик','Деталей','Оплата','Статус','Синхронизация','Номер записи','Комментарий']
+        ['Дата','Время','Покупатель','Модель','Кладовщик','Деталей','Оплата','Дата оплаты','Время оплаты','Статус','Синхронизация','Номер записи','Комментарий']
       ];
-      history.forEach(h => rows.push([h.date || '', h.time || '', h.buyer || '', h.model || '', h.worker || '', h.totalParts || 20, h.paymentStatus || 'Оплачено', h.status || 'Отпущено', h.cloudSync || '', h.shipmentId || '', h.comment || '']));
+      history.forEach(h => rows.push([h.date || '', h.time || '', h.buyer || '', h.model || '', h.worker || '', h.totalParts || 20, h.paymentStatus || 'Оплачено', h.paymentDate || '', h.paymentTime || '', h.status || 'Отпущено', h.cloudSync || '', h.shipmentId || '', h.comment || '']));
       const csv = rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(';')).join('\n');
       const blob = new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
@@ -1956,8 +1971,8 @@
         <!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Журнал отгрузок</title>
         <style>body{font-family:Arial,sans-serif;padding:20px;color:#111827}h1{font-size:22px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#111827;color:#fff}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}</style></head><body>
         <h1>Журнал отгрузок мебели</h1>
-        <table><thead><tr><th>Дата</th><th>Время</th><th>Покупатель</th><th>Модель</th><th>Кладовщик</th><th>Деталей</th><th>Оплата</th><th>Статус</th><th>Синхр.</th><th>Запись</th></tr></thead>
-        <tbody>${history.map(h => `<tr><td>${escapeHtml(h.date||'')}</td><td>${escapeHtml(h.time||'')}</td><td>${escapeHtml(h.buyer||'')}</td><td>${escapeHtml(h.model||'')}</td><td>${escapeHtml(h.worker||'')}</td><td>${escapeHtml(h.totalParts||20)}</td><td>${escapeHtml(h.paymentStatus||'Оплачено')}</td><td>${escapeHtml(h.status||'Отпущено')}</td><td>${escapeHtml(h.cloudSync||'')}</td><td>${escapeHtml(h.shipmentId||'')}</td></tr>`).join('')}</tbody></table>
+        <table><thead><tr><th>Дата</th><th>Время</th><th>Покупатель</th><th>Модель</th><th>Кладовщик</th><th>Деталей</th><th>Оплата</th><th>Дата оплаты</th><th>Время оплаты</th><th>Статус</th><th>Синхр.</th><th>Запись</th></tr></thead>
+        <tbody>${history.map(h => `<tr><td>${escapeHtml(h.date||'')}</td><td>${escapeHtml(h.time||'')}</td><td>${escapeHtml(h.buyer||'')}</td><td>${escapeHtml(h.model||'')}</td><td>${escapeHtml(h.worker||'')}</td><td>${escapeHtml(h.totalParts||20)}</td><td>${escapeHtml(h.paymentStatus||'Оплачено')}</td><td>${escapeHtml(h.paymentDate||'')}</td><td>${escapeHtml(h.paymentTime||'')}</td><td>${escapeHtml(h.status||'Отпущено')}</td><td>${escapeHtml(h.cloudSync||'')}</td><td>${escapeHtml(h.shipmentId||'')}</td></tr>`).join('')}</tbody></table>
         </body></html>`;
       const w = window.open('', '_blank');
       w.document.write(html);
@@ -2239,6 +2254,102 @@
       const pending = normalized === 'Ожидает отправки' || normalized === 'Ожидает';
       const cls = sent ? 'sent' : (pending ? 'pending' : '');
       return `<span class="sync-badge ${cls}">${escapeHtml(normalized)}</span>`;
+    }
+
+
+    function paymentEditor(item) {
+      const status = item.paymentStatus === 'Не оплачено' ? 'Не оплачено' : 'Оплачено';
+      const shipmentId = item.shipmentId || '';
+      const paidSelected = status === 'Оплачено' ? ' selected' : '';
+      const unpaidSelected = status === 'Не оплачено' ? ' selected' : '';
+      const cls = status === 'Оплачено' ? 'payment-select-paid' : 'payment-select-unpaid';
+      return `
+        <select class="journal-payment-select ${cls}" onchange="updateJournalPayment('${escapeJsAttr(shipmentId)}', this.value, this)">
+          <option value="Оплачено"${paidSelected}>Оплачено</option>
+          <option value="Не оплачено"${unpaidSelected}>Не оплачено</option>
+        </select>
+      `;
+    }
+
+    function updateJournalPayment(shipmentId, paymentStatus, selectEl) {
+      if (!shipmentId) return;
+      const normalized = paymentStatus === 'Не оплачено' ? 'Не оплачено' : 'Оплачено';
+      const previous = selectEl ? selectEl.getAttribute('data-previous') || '' : '';
+
+      updateLocalPaymentStatus(shipmentId, normalized, getLocalPaymentDate(normalized), getLocalPaymentTime(normalized));
+      if (selectEl) {
+        selectEl.disabled = true;
+        selectEl.classList.toggle('payment-select-paid', normalized === 'Оплачено');
+        selectEl.classList.toggle('payment-select-unpaid', normalized === 'Не оплачено');
+      }
+
+      if (!cloudScriptUrl) {
+        if (selectEl) selectEl.disabled = false;
+        updateCloudStatus('warn', 'Оплата изменена только локально. Для общего журнала нужна ссылка Apps Script.');
+        return;
+      }
+
+      const callbackName = 'updatePaymentCallback_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+      const script = document.createElement('script');
+      const timeout = setTimeout(() => {
+        cleanupCloudJsonp(callbackName, script);
+        if (selectEl) selectEl.disabled = false;
+        updateCloudStatus('error', 'Google Sheets не ответил. Статус оплаты может не сохраниться в общем журнале.');
+        loadCloudJournal(true);
+      }, 15000);
+
+      window[callbackName] = response => {
+        clearTimeout(timeout);
+        cleanupCloudJsonp(callbackName, script);
+        if (selectEl) selectEl.disabled = false;
+        if (response && response.ok) {
+          updateLocalPaymentStatus(shipmentId, response.paymentStatus || normalized, response.paymentDate || '', response.paymentTime || '');
+          updateCloudStatus('ok', 'Статус оплаты обновлен в общем журнале.');
+          loadCloudJournal(true);
+        } else {
+          updateCloudStatus('error', 'Не удалось обновить оплату: ' + ((response && response.error) || 'неизвестная ошибка'));
+          loadCloudJournal(true);
+        }
+      };
+
+      script.id = callbackName;
+      script.src = cloudScriptUrl + '?action=updatePayment&callback=' + encodeURIComponent(callbackName) + '&shipmentId=' + encodeURIComponent(shipmentId) + '&paymentStatus=' + encodeURIComponent(normalized) + '&t=' + Date.now();
+      script.onerror = () => {
+        clearTimeout(timeout);
+        cleanupCloudJsonp(callbackName, script);
+        if (selectEl) selectEl.disabled = false;
+        updateCloudStatus('error', 'Не удалось обновить оплату. Проверьте публикацию Apps Script и доступ «Anyone».');
+        loadCloudJournal(true);
+      };
+      document.body.appendChild(script);
+    }
+
+    function updateLocalPaymentStatus(shipmentId, paymentStatus, paymentDate, paymentTime) {
+      const history = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
+      const item = history.find(h => String(h.shipmentId) === String(shipmentId));
+      if (item) {
+        const normalized = paymentStatus === 'Не оплачено' ? 'Не оплачено' : 'Оплачено';
+        item.paymentStatus = normalized;
+        item.paymentDate = normalized === 'Оплачено' ? (paymentDate || item.paymentDate || '') : '';
+        item.paymentTime = normalized === 'Оплачено' ? (paymentTime || item.paymentTime || '') : '';
+        item.cloudSync = item.cloudSync || 'Отправлено';
+        localStorage.setItem('completedFurnitureSets', JSON.stringify(history));
+      }
+      renderHistory();
+    }
+
+    function getLocalPaymentDate(paymentStatus) {
+      if (paymentStatus === 'Не оплачено') return '';
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function getLocalPaymentTime(paymentStatus) {
+      if (paymentStatus === 'Не оплачено') return '';
+      return new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    }
+
+    function escapeJsAttr(value) {
+      return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, ' '); 
     }
 
 
