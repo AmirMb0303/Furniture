@@ -697,7 +697,7 @@
         <div class="actions">
           <button class="btn-primary" onclick="loadCloudJournal()">Обновить журнал</button>
           <button class="btn-muted" onclick="printJournal()">Печать журнала</button>
-          <button class="btn-danger desktop-only" id="clearJournalBtn" onclick="clearHistory()">Очистить журнал</button>
+          <button class="btn-danger desktop-only" onclick="clearHistory()">Очистить журнал</button>
         </div>
       </div>
       <div class="hint" style="margin-bottom:10px;">Журнал автоматически подтягивается из Google Sheets, если синхронизация настроена. Локальное хранение используется как резерв.</div>
@@ -1940,22 +1940,35 @@
     }
 
     function clearHistory() {
-      if (!confirm('Очистить весь журнал отгрузок? Это удалит записи из общего Google Sheets журнала для всех устройств.')) return;
+      if (!confirm('Очистить весь общий журнал отгрузок в Google Sheets? Это действие удалит записи для всех устройств.')) return;
 
       const clearBtn = $('clearJournalBtn');
       if (clearBtn) clearBtn.disabled = true;
 
+      function finishClearSuccess(message) {
+        localStorage.removeItem('completedFurnitureSets');
+        localStorage.removeItem('pendingCloudShipments');
+        lastCloudLoadAt = new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+        renderHistory();
+        updateCloudStatus('ok', message || 'Общий журнал Google Sheets очищен.');
+        setTimeout(() => loadCloudJournal(true), 800);
+        if (clearBtn) clearBtn.disabled = false;
+      }
+
+      function finishClearError(message) {
+        updateCloudStatus('error', message || 'Не удалось очистить общий журнал.');
+        if (clearBtn) clearBtn.disabled = false;
+      }
+
       if (!cloudScriptUrl) {
         localStorage.removeItem('completedFurnitureSets');
         renderHistory();
-        if (clearBtn) clearBtn.disabled = false;
-        updateCloudStatus('warn', 'Очищена только локальная копия. Общий Google Sheets журнал не настроен.');
+        finishClearError('Общий Google Sheets журнал не настроен. Очищена только локальная копия на этом устройстве.');
         return;
       }
 
       if (!navigator.onLine) {
-        if (clearBtn) clearBtn.disabled = false;
-        updateCloudStatus('error', 'Нет интернета. Общий журнал Google Sheets не очищен.');
+        finishClearError('Нет интернета. Общий журнал Google Sheets не очищен.');
         return;
       }
 
@@ -1964,24 +1977,17 @@
       const script = document.createElement('script');
       const timeout = setTimeout(() => {
         cleanupCloudJsonp(callbackName, script);
-        if (clearBtn) clearBtn.disabled = false;
-        updateCloudStatus('error', 'Google Sheets не ответил. Журнал не очищен. Проверьте публикацию Apps Script и доступ «Anyone».');
-      }, 15000);
+        finishClearError('Google Sheets не ответил. Проверьте, что Apps Script заново опубликован как New version и доступ стоит Anyone.');
+      }, 20000);
 
       window[callbackName] = response => {
         clearTimeout(timeout);
         cleanupCloudJsonp(callbackName, script);
-        if (clearBtn) clearBtn.disabled = false;
 
         if (response && response.ok) {
-          localStorage.removeItem('completedFurnitureSets');
-          localStorage.removeItem('pendingCloudShipments');
-          lastCloudLoadAt = new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
-          renderHistory();
-          updateCloudStatus('ok', 'Общий журнал Google Sheets очищен. На других устройствах записи исчезнут после автообновления.');
-          loadCloudJournal(true);
+          finishClearSuccess(response.message || 'Общий журнал Google Sheets очищен.');
         } else {
-          updateCloudStatus('error', 'Не удалось очистить общий журнал: ' + ((response && response.error) || 'неизвестная ошибка'));
+          finishClearError('Не удалось очистить общий журнал: ' + ((response && response.error) || 'неизвестная ошибка'));
         }
       };
 
@@ -1990,8 +1996,7 @@
       script.onerror = () => {
         clearTimeout(timeout);
         cleanupCloudJsonp(callbackName, script);
-        if (clearBtn) clearBtn.disabled = false;
-        updateCloudStatus('error', 'Не удалось очистить журнал. Проверьте публикацию Apps Script и доступ «Anyone».');
+        finishClearError('Не удалось отправить команду очистки. Проверьте публикацию Apps Script и доступ Anyone.');
       };
       document.body.appendChild(script);
     }
@@ -2280,16 +2285,10 @@
 
     function mergeCloudHistory(remote) {
       const local = JSON.parse(localStorage.getItem('completedFurnitureSets') || '[]');
-      const remoteIds = new Set((remote || []).map(item => String(item && item.shipmentId || '')).filter(Boolean));
-      const localOnlyPending = local.filter(item => {
-        if (!item || !item.shipmentId) return false;
-        const sync = item.cloudSync || '';
-        return !remoteIds.has(String(item.shipmentId)) && (sync === 'Ожидает отправки' || sync === 'Отправляется' || sync === 'Не настроено');
-      });
       const byId = new Map();
-      [...(remote || []), ...localOnlyPending].forEach(item => {
+      [...local, ...remote].forEach(item => {
         if (!item || !item.shipmentId) return;
-        byId.set(String(item.shipmentId), {...item, cloudSync: item.cloudSync || 'Отправлено'});
+        byId.set(item.shipmentId, {...item, cloudSync: item.cloudSync || 'Отправлено'});
       });
       const merged = [...byId.values()].sort((a, b) => String((b.date || '') + ' ' + (b.time || '')).localeCompare(String((a.date || '') + ' ' + (a.time || ''))));
       localStorage.setItem('completedFurnitureSets', JSON.stringify(merged.slice(0, 500)));
