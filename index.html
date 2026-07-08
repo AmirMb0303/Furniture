@@ -1437,6 +1437,10 @@
     let shipmentCompleted = localStorage.getItem('currentShipmentCompleted') === 'true';
     let cloudScriptUrl = localStorage.getItem('cloudScriptUrl') || '';
     const cloudFrameName = 'cloudSyncFrame';
+    const cloudAutoRefreshMs = 60000;
+    let cloudAutoRefreshTimer = null;
+    let cloudListLoading = false;
+
 
     const $ = id => document.getElementById(id);
 
@@ -1472,9 +1476,14 @@
       if (cloudInput) cloudInput.value = cloudScriptUrl;
       ensureCloudFrame();
       updateCloudStatus();
+      setupCloudAutoSync();
       renderModelSelect();
       renderParts();
       renderHistory();
+      if (cloudScriptUrl) {
+        syncPendingShipments(true);
+        loadCloudJournal(true);
+      }
     }
 
     function renderModelSelect() {
@@ -1931,7 +1940,10 @@
       }
       cloudScriptUrl = url;
       localStorage.setItem('cloudScriptUrl', cloudScriptUrl);
-      updateCloudStatus('ok', 'Ссылка сохранена. Новые отгрузки будут отправляться в Google Sheets.');
+      setupCloudAutoSync();
+      updateCloudStatus('ok', 'Ссылка сохранена. Журнал будет автоматически загружаться и обновляться из Google Sheets.');
+      syncPendingShipments(true);
+      loadCloudJournal(true);
     }
 
     function ensureCloudFrame() {
@@ -1940,6 +1952,28 @@
       iframe.name = cloudFrameName;
       iframe.style.display = 'none';
       document.body.appendChild(iframe);
+    }
+
+    function setupCloudAutoSync() {
+      if (cloudAutoRefreshTimer) {
+        clearInterval(cloudAutoRefreshTimer);
+        cloudAutoRefreshTimer = null;
+      }
+      window.removeEventListener('online', handleOnlineSync);
+      if (!cloudScriptUrl) return;
+
+      window.addEventListener('online', handleOnlineSync);
+      cloudAutoRefreshTimer = setInterval(() => {
+        if (!cloudScriptUrl || document.hidden || !navigator.onLine) return;
+        syncPendingShipments(true);
+        loadCloudJournal(true);
+      }, cloudAutoRefreshMs);
+    }
+
+    function handleOnlineSync() {
+      if (!cloudScriptUrl) return;
+      syncPendingShipments(true);
+      loadCloudJournal(true);
     }
 
     function updateCloudStatus(type, message) {
@@ -1955,7 +1989,7 @@
           message = `Облако настроено. Ожидают отправки записей: ${pending}.`;
         } else {
           type = 'ok';
-          message = 'Облако настроено. Ожидающих записей нет.';
+          message = 'Облако настроено. Журнал автоматически синхронизируется с Google Sheets.';
         }
       }
       box.className = 'cloud-status ' + (type || '');
@@ -2017,6 +2051,7 @@
           setPendingCloudQueue(queue);
           updateLocalSyncStatus(item.shipmentId, 'Отправлено');
           updateCloudStatus('ok', `Запись ${item.shipmentId} подтверждена Google Sheets.`);
+          loadCloudJournal(true);
         } else {
           const queue = getPendingCloudQueue();
           if (!queue.some(x => x.shipmentId === item.shipmentId)) queue.push(item);
@@ -2045,10 +2080,17 @@
       if (script && script.parentNode) script.parentNode.removeChild(script);
     }
 
-    function syncPendingShipments() {
-      if (!cloudScriptUrl) return updateCloudStatus('warn', 'Сначала вставьте и сохраните ссылку Google Apps Script.');
+    function syncPendingShipments(silent = false) {
+      if (!cloudScriptUrl) {
+        if (!silent) updateCloudStatus('warn', 'Сначала вставьте и сохраните ссылку Google Apps Script.');
+        return;
+      }
       const queue = getPendingCloudQueue();
-      if (!queue.length) return updateCloudStatus('ok', 'Ожидающих записей нет.');
+      if (!queue.length) {
+        if (!silent) updateCloudStatus('ok', 'Ожидающих записей нет.');
+        return;
+      }
+      if (!silent) updateCloudStatus('warn', `Отправляю ожидающие записи: ${queue.length}.`);
       queue.forEach(item => sendShipmentToCloud(item));
       renderHistory();
     }
@@ -2063,14 +2105,20 @@
       renderHistory();
     }
 
-    function loadCloudJournal() {
-      if (!cloudScriptUrl) return updateCloudStatus('warn', 'Сначала вставьте и сохраните ссылку Google Apps Script.');
-      updateCloudStatus('warn', 'Загружаю журнал из Google Sheets...');
+    function loadCloudJournal(silent = false) {
+      if (!cloudScriptUrl) {
+        if (!silent) updateCloudStatus('warn', 'Сначала вставьте и сохраните ссылку Google Apps Script.');
+        return;
+      }
+      if (cloudListLoading) return;
+      cloudListLoading = true;
+      if (!silent) updateCloudStatus('warn', 'Загружаю журнал из Google Sheets...');
       const callbackName = 'loadCloudJournalCallback_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
       const script = document.createElement('script');
       const timeout = setTimeout(() => {
+        cloudListLoading = false;
         cleanupCloudJsonp(callbackName, script);
-        updateCloudStatus('error', 'Google Sheets не ответил. Проверьте новую публикацию Apps Script и доступ «Anyone».');
+        if (!silent) updateCloudStatus('error', 'Google Sheets не ответил. Проверьте новую публикацию Apps Script и доступ «Anyone».');
       }, 15000);
 
       window[callbackName] = response => {
@@ -2079,10 +2127,11 @@
           if (!response || response.ok === false) throw new Error((response && response.error) || 'Ошибка ответа Apps Script');
           const remote = Array.isArray(response) ? response : (response.items || []);
           mergeCloudHistory(remote);
-          updateCloudStatus('ok', `Журнал загружен из Google Sheets. Записей получено: ${remote.length}.`);
+          if (!silent) updateCloudStatus('ok', `Журнал загружен из Google Sheets. Записей получено: ${remote.length}.`);
         } catch (err) {
-          updateCloudStatus('error', 'Не удалось обработать журнал из Google Sheets: ' + err.message);
+          if (!silent) updateCloudStatus('error', 'Не удалось обработать журнал из Google Sheets: ' + err.message);
         } finally {
+          cloudListLoading = false;
           cleanupCloudJsonp(callbackName, script);
         }
       };
@@ -2091,8 +2140,9 @@
       script.src = cloudScriptUrl + '?action=list&callback=' + encodeURIComponent(callbackName) + '&t=' + Date.now();
       script.onerror = () => {
         clearTimeout(timeout);
+        cloudListLoading = false;
         cleanupCloudJsonp(callbackName, script);
-        updateCloudStatus('error', 'Не удалось загрузить журнал. Проверьте публикацию Apps Script и доступ «Anyone».');
+        if (!silent) updateCloudStatus('error', 'Не удалось загрузить журнал. Проверьте публикацию Apps Script и доступ «Anyone».');
       };
       document.body.appendChild(script);
     }
@@ -2191,6 +2241,13 @@
     function escapeHtml(str) {
       return String(str).replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[s]));
     }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && cloudScriptUrl) {
+        syncPendingShipments(true);
+        loadCloudJournal(true);
+      }
+    });
 
     init();
   </script>
