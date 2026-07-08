@@ -230,6 +230,36 @@
       background: #dcfce7;
     }
 
+
+    .part.group-header {
+      cursor: default;
+      background: #f9fafb;
+      border-color: var(--border);
+      grid-template-columns: 42px 1fr auto;
+    }
+
+    .part.group-header:hover:not(.checked) {
+      background: #f9fafb;
+      border-color: var(--border);
+    }
+
+    .part.group-header .part-num {
+      background: #6b7280;
+    }
+
+    .part.group-header.checked {
+      background: #dcfce7;
+      border-color: #4ade80;
+    }
+
+    .part.group-header.checked .part-num {
+      background: var(--ok);
+    }
+
+    .part.group-header .part-name {
+      font-size: 17px;
+    }
+
     .part.locked {
       cursor: not-allowed;
       opacity: .86;
@@ -1442,22 +1472,87 @@
       };
     }
 
+    function getStructuredParts() {
+      const rawParts = models[currentModel] || [];
+      const structured = [];
+      let currentHeader = null;
+
+      rawParts.forEach((name, index) => {
+        const num = index + 1;
+        const cleanName = cleanPartName(name, num);
+        if (isGroupHeader(cleanName)) {
+          currentHeader = {
+            type: 'header',
+            number: num,
+            name: cleanName,
+            children: []
+          };
+          structured.push(currentHeader);
+        } else {
+          const detail = {
+            type: 'detail',
+            number: num,
+            name: cleanName,
+            group: currentHeader ? currentHeader.name : ''
+          };
+          if (currentHeader) currentHeader.children.push(num);
+          structured.push(detail);
+        }
+      });
+
+      return structured;
+    }
+
+    function getDetailNumbers() {
+      return getStructuredParts()
+        .filter(item => item.type === 'detail')
+        .map(item => item.number);
+    }
+
+    function getCheckedDetailCount() {
+      const detailNumbers = new Set(getDetailNumbers().map(String));
+      return Object.keys(checked).filter(num => detailNumbers.has(String(num)) && checked[num]).length;
+    }
+
+    function isGroupComplete(header) {
+      return header.children.length > 0 && header.children.every(num => checked[num]);
+    }
+
     function renderParts() {
-      const parts = models[currentModel] || [];
+      const structured = getStructuredParts();
+      const detailNumbers = getDetailNumbers();
       const list = $('partsList');
       list.innerHTML = '';
 
-      parts.forEach((name, index) => {
-        const num = index + 1;
+      structured.forEach(item => {
         const div = document.createElement('div');
+
+        if (item.type === 'header') {
+          const done = isGroupComplete(item);
+          const total = item.children.length;
+          const marked = item.children.filter(num => checked[num]).length;
+          div.className = 'part group-header' + (done ? ' checked' : '') + (shipmentCompleted ? ' locked' : '');
+          div.innerHTML = `
+            <div class="part-num">§</div>
+            <div>
+              <div class="part-name">${escapeHtml(item.name)}</div>
+              <div class="part-code">Раздел: ${marked} из ${total} деталей</div>
+            </div>
+            <div class="checkmark">${done ? '✓' : '—'}</div>
+          `;
+          list.appendChild(div);
+          return;
+        }
+
+        const num = item.number;
         div.className = 'part' + (checked[num] ? ' checked' : '') + (shipmentCompleted ? ' locked' : '');
         div.onclick = () => togglePart(num);
         const timeHtml = checkedTimes[num] ? `<div class="part-time">Отпущено: ${escapeHtml(checkedTimes[num])}</div>` : '';
         div.innerHTML = `
           <div class="part-num">${num}</div>
           <div>
-            <div class="part-name">${escapeHtml(cleanPartName(name, num))}</div>
-            <div class="part-code">Деталь №${num}</div>
+            <div class="part-name">${escapeHtml(item.name)}</div>
+            <div class="part-code">Деталь №${num}${item.group ? ' · ' + escapeHtml(item.group) : ''}</div>
             ${timeHtml}
           </div>
           <div class="checkmark">${checked[num] ? '✓' : '✗'}</div>
@@ -1465,13 +1560,14 @@
         list.appendChild(div);
       });
 
-      $('totalCount').textContent = parts.length;
+      $('totalCount').textContent = detailNumbers.length;
       updateSummary();
       fillEditor();
     }
 
     function togglePart(num) {
       if (shipmentCompleted) return;
+      if (!getDetailNumbers().includes(num)) return;
       checked[num] = !checked[num];
       if (checked[num]) {
         checkedTimes[num] = new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
@@ -1486,8 +1582,8 @@
     }
 
     function updateSummary() {
-      const total = (models[currentModel] || []).length;
-      const count = Object.keys(checked).length;
+      const total = getDetailNumbers().length;
+      const count = getCheckedDetailCount();
       $('checkedCount').textContent = count;
       $('leftCount').textContent = total - count;
       $('progress').style.width = total ? `${Math.round(count / total * 100)}%` : '0%';
@@ -1502,11 +1598,11 @@
 
     function markAll() {
       if (shipmentCompleted) return;
-      const parts = models[currentModel] || [];
+      const detailNumbers = getDetailNumbers();
       checked = {};
       checkedTimes = {};
       const now = new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
-      parts.forEach((_, i) => { checked[i + 1] = true; checkedTimes[i + 1] = now; });
+      detailNumbers.forEach(num => { checked[num] = true; checkedTimes[num] = now; });
       localStorage.setItem('currentCheckedParts', JSON.stringify(checked));
       localStorage.setItem('currentCheckedPartTimes', JSON.stringify(checkedTimes));
       renderParts();
@@ -1527,8 +1623,8 @@
     }
 
     function autoCompleteIfReady() {
-      const total = (models[currentModel] || []).length;
-      const count = Object.keys(checked).length;
+      const total = getDetailNumbers().length;
+      const count = getCheckedDetailCount();
       if (!shipmentCompleted && total > 0 && count === total) {
         if (!validateShipmentFields()) return;
         const confirmed = confirm('Все детали собраны. Подтвердить отгрузку?');
@@ -1541,8 +1637,8 @@
     }
 
     function completeSet() {
-      const total = (models[currentModel] || []).length;
-      const count = Object.keys(checked).length;
+      const total = getDetailNumbers().length;
+      const count = getCheckedDetailCount();
       if (shipmentCompleted) return;
       if (!validateShipmentFields()) return;
       if (count !== total) {
@@ -1560,7 +1656,14 @@
       }
 
       const now = new Date();
-      const parts = models[currentModel] || [];
+      const structured = getStructuredParts();
+      const detailItems = structured.filter(item => item.type === 'detail');
+      const groups = structured.filter(item => item.type === 'header').map(header => ({
+        name: header.name,
+        total: header.children.length,
+        checked: header.children.filter(num => checked[num]).length,
+        completed: isGroupComplete(header)
+      }));
       const item = {
         shipmentId: currentShipmentId,
         model: currentModel,
@@ -1572,10 +1675,12 @@
         paymentStatus: $('paymentStatus').value || 'Оплачено',
         totalParts: total,
         status: 'Отпущено',
-        parts: parts.map((name, i) => ({
-          number: i + 1,
-          name: cleanPartName(name, i + 1),
-          time: checkedTimes[i + 1] || ''
+        groups,
+        parts: detailItems.map(detail => ({
+          number: detail.number,
+          group: detail.group,
+          name: detail.name,
+          time: checkedTimes[detail.number] || ''
         }))
       };
       item.cloudSync = cloudScriptUrl ? 'Ожидает отправки' : 'Не настроено';
@@ -2030,6 +2135,13 @@
       const min = String(d.getMinutes()).padStart(2, '0');
       const sec = String(d.getSeconds()).padStart(2, '0');
       return `OTG-${y}${m}${day}-${h}${min}${sec}`;
+    }
+
+
+    function isGroupHeader(text) {
+      const value = String(text || '').trim();
+      if (!value) return false;
+      return !/^\d+\/\d*$/.test(value);
     }
 
     function cleanPartName(text, num) {
