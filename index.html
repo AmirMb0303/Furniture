@@ -529,6 +529,36 @@
       text-align: center;
     }
 
+    .sync-panel {
+      margin: 12px 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f9fafb;
+      overflow: hidden;
+    }
+
+    .sync-panel summary {
+      padding: 11px 12px;
+      cursor: pointer;
+      font-weight: 800;
+      color: #374151;
+      list-style-position: inside;
+    }
+
+    .sync-panel-body {
+      padding: 0 12px 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .journal-sync-line {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
 
     @media (max-width: 900px) {
       body { padding: 10px; }
@@ -645,33 +675,40 @@
     </main>
 
 
-    <section class="card cloud-card" style="margin-top:18px;">
-      <div class="parts-toolbar">
-        <h2 style="margin:0;">Облачное сохранение Google Sheets</h2>
-        <div class="actions">
-          <button class="btn-primary" onclick="saveCloudUrl()">Сохранить ссылку</button>
-          <button class="btn-muted" onclick="loadCloudJournal()">Загрузить журнал</button>
-          <button class="btn-muted" onclick="syncPendingShipments()">Отправить ожидающие</button>
-        </div>
-      </div>
-      <div class="field">
-        <label>Ссылка Google Apps Script Web App</label>
-        <input id="cloudScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" />
-      </div>
-      <div class="hint">После настройки каждая подтвержденная отгрузка будет сохраняться в Google Таблицу. Отправка и загрузка работают через подтвержденный ответ Apps Script.</div>
-      <div class="cloud-status" id="cloudStatus">Облако не настроено.</div>
-    </section>
+    <!-- Синхронизация журнала перенесена внутрь блока «Журнал отгрузок», чтобы отдельная графа не занимала место. -->
 
     <section class="card history-card" style="margin-top:18px;">
       <div class="parts-toolbar">
         <h2 style="margin:0;">Журнал отгрузок</h2>
         <div class="actions">
+          <button class="btn-primary" onclick="loadCloudJournal()">Обновить журнал</button>
+          <button class="btn-muted" onclick="syncPendingShipments()">Отправить ожидающие</button>
           <button class="btn-muted" onclick="exportJournalCSV()">Скачать CSV</button>
           <button class="btn-muted" onclick="printJournal()">Печать журнала</button>
           <button class="btn-danger" onclick="clearHistory()">Очистить журнал</button>
         </div>
       </div>
-      <div class="hint" style="margin-bottom:10px;">Журнал хранится локально в браузере и может синхронизироваться с Google Sheets.</div>
+      <div class="hint" style="margin-bottom:10px;">Журнал автоматически подтягивается из Google Sheets, если синхронизация настроена. Локальное хранение используется как резерв.</div>
+      <div class="journal-sync-line">
+        <span class="sync-badge" id="journalCloudBadge">Проверка синхронизации</span>
+        <span class="hint" id="journalCloudHint">Для общего журнала укажите ссылку Google Apps Script.</span>
+      </div>
+      <details class="sync-panel" id="syncPanel">
+        <summary>Настройка общего журнала Google Sheets</summary>
+        <div class="sync-panel-body">
+          <div class="field" style="margin-bottom:0;">
+            <label>Ссылка Google Apps Script Web App</label>
+            <input id="cloudScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+          </div>
+          <div class="actions">
+            <button class="btn-primary" onclick="saveCloudUrl()">Сохранить ссылку</button>
+            <button class="btn-muted" onclick="loadCloudJournal()">Загрузить журнал</button>
+            <button class="btn-muted" onclick="syncPendingShipments()">Отправить ожидающие</button>
+          </div>
+          <div class="cloud-status" id="cloudStatus">Облако не настроено.</div>
+          <div class="hint">Чтобы журнал был одинаковым на всех телефонах, вставьте сюда одну и ту же ссылку Web App или пропишите ее прямо в HTML в переменной CLOUD_SCRIPT_URL.</div>
+        </div>
+      </details>
       <div class="journal-search">
         <div class="field" style="margin-bottom:0;">
           <label>Поиск по журналу</label>
@@ -1435,7 +1472,10 @@
     let checkedTimes = JSON.parse(localStorage.getItem('currentCheckedPartTimes') || '{}');
     let currentShipmentId = localStorage.getItem('currentShipmentId') || makeShipmentId();
     let shipmentCompleted = localStorage.getItem('currentShipmentCompleted') === 'true';
-    let cloudScriptUrl = localStorage.getItem('cloudScriptUrl') || '';
+    // Чтобы журнал сразу работал на всех устройствах без ручной настройки,
+    // вставьте ссылку Google Apps Script Web App между кавычками ниже.
+    const CLOUD_SCRIPT_URL = '';
+    let cloudScriptUrl = CLOUD_SCRIPT_URL || localStorage.getItem('cloudScriptUrl') || '';
     const cloudFrameName = 'cloudSyncFrame';
     const cloudAutoRefreshMs = 60000;
     let cloudAutoRefreshTimer = null;
@@ -1929,9 +1969,15 @@
       const input = $('cloudScriptUrl');
       const url = (input && input.value || '').trim();
       if (!url) {
+        if (CLOUD_SCRIPT_URL) {
+          cloudScriptUrl = CLOUD_SCRIPT_URL;
+          localStorage.removeItem('cloudScriptUrl');
+          updateCloudStatus('ok', 'Используется ссылка, прописанная в HTML.');
+          return;
+        }
         cloudScriptUrl = '';
         localStorage.removeItem('cloudScriptUrl');
-        updateCloudStatus('warn', 'Ссылка удалена. Облачное сохранение отключено.');
+        updateCloudStatus('warn', 'Ссылка удалена. Общий журнал отключен.');
         return;
       }
       if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url)) {
@@ -1978,22 +2024,30 @@
 
     function updateCloudStatus(type, message) {
       const box = $('cloudStatus');
-      if (!box) return;
+      const badge = $('journalCloudBadge');
+      const hint = $('journalCloudHint');
       const pending = getPendingCloudQueue().length;
       if (!message) {
         if (!cloudScriptUrl) {
           type = 'warn';
-          message = 'Облако не настроено. Вставьте ссылку Google Apps Script Web App.';
+          message = 'Общий журнал не настроен. Вставьте ссылку Google Apps Script Web App.';
         } else if (pending) {
           type = 'warn';
-          message = `Облако настроено. Ожидают отправки записей: ${pending}.`;
+          message = `Общий журнал настроен. Ожидают отправки записей: ${pending}.`;
         } else {
           type = 'ok';
-          message = 'Облако настроено. Журнал автоматически синхронизируется с Google Sheets.';
+          message = 'Общий журнал настроен. Данные автоматически синхронизируются с Google Sheets.';
         }
       }
-      box.className = 'cloud-status ' + (type || '');
-      box.textContent = message;
+      if (box) {
+        box.className = 'cloud-status ' + (type || '');
+        box.textContent = message;
+      }
+      if (badge) {
+        badge.className = 'sync-badge ' + (type === 'ok' ? 'sent' : (type === 'warn' ? 'pending' : ''));
+        badge.textContent = cloudScriptUrl ? (pending ? `Ожидает отправки: ${pending}` : 'Общий журнал включен') : 'Общий журнал выключен';
+      }
+      if (hint) hint.textContent = message;
     }
 
     function getPendingCloudQueue() {
