@@ -1477,9 +1477,10 @@
     const CLOUD_SCRIPT_URL = '';
     let cloudScriptUrl = CLOUD_SCRIPT_URL || localStorage.getItem('cloudScriptUrl') || '';
     const cloudFrameName = 'cloudSyncFrame';
-    const cloudAutoRefreshMs = 60000;
+    const cloudAutoRefreshMs = 15000;
     let cloudAutoRefreshTimer = null;
     let cloudListLoading = false;
+    let lastCloudLoadAt = '';
 
 
     const $ = id => document.getElementById(id);
@@ -1514,6 +1515,7 @@
       }
       const cloudInput = $('cloudScriptUrl');
       if (cloudInput) cloudInput.value = cloudScriptUrl;
+      if (CLOUD_SCRIPT_URL) localStorage.setItem('cloudScriptUrl', CLOUD_SCRIPT_URL);
       ensureCloudFrame();
       updateCloudStatus();
       setupCloudAutoSync();
@@ -1521,8 +1523,8 @@
       renderParts();
       renderHistory();
       if (cloudScriptUrl) {
-        syncPendingShipments(true);
-        loadCloudJournal(true);
+        runCloudAutoSync(true);
+        setTimeout(() => runCloudAutoSync(true), 2500);
       }
     }
 
@@ -2006,20 +2008,28 @@
         cloudAutoRefreshTimer = null;
       }
       window.removeEventListener('online', handleOnlineSync);
+      window.removeEventListener('focus', handleOnlineSync);
+      window.removeEventListener('pageshow', handleOnlineSync);
       if (!cloudScriptUrl) return;
 
       window.addEventListener('online', handleOnlineSync);
-      cloudAutoRefreshTimer = setInterval(() => {
-        if (!cloudScriptUrl || document.hidden || !navigator.onLine) return;
-        syncPendingShipments(true);
-        loadCloudJournal(true);
-      }, cloudAutoRefreshMs);
+      window.addEventListener('focus', handleOnlineSync);
+      window.addEventListener('pageshow', handleOnlineSync);
+      cloudAutoRefreshTimer = setInterval(() => runCloudAutoSync(true), cloudAutoRefreshMs);
+    }
+
+    function runCloudAutoSync(silent = true) {
+      if (!cloudScriptUrl) return;
+      if (!navigator.onLine) {
+        if (!silent) updateCloudStatus('warn', 'Нет интернета. Журнал обновится автоматически после подключения.');
+        return;
+      }
+      syncPendingShipments(true);
+      loadCloudJournal(true);
     }
 
     function handleOnlineSync() {
-      if (!cloudScriptUrl) return;
-      syncPendingShipments(true);
-      loadCloudJournal(true);
+      runCloudAutoSync(true);
     }
 
     function updateCloudStatus(type, message) {
@@ -2036,7 +2046,7 @@
           message = `Общий журнал настроен. Ожидают отправки записей: ${pending}.`;
         } else {
           type = 'ok';
-          message = 'Общий журнал настроен. Данные автоматически синхронизируются с Google Sheets.';
+          message = lastCloudLoadAt ? `Общий журнал включен. Последнее автообновление: ${lastCloudLoadAt}.` : 'Общий журнал включен. Записи автоматически подтягиваются из Google Sheets каждые 15 секунд.';
         }
       }
       if (box) {
@@ -2045,7 +2055,7 @@
       }
       if (badge) {
         badge.className = 'sync-badge ' + (type === 'ok' ? 'sent' : (type === 'warn' ? 'pending' : ''));
-        badge.textContent = cloudScriptUrl ? (pending ? `Ожидает отправки: ${pending}` : 'Общий журнал включен') : 'Общий журнал выключен';
+        badge.textContent = cloudScriptUrl ? (pending ? `Ожидает отправки: ${pending}` : (lastCloudLoadAt ? `Автообновлено: ${lastCloudLoadAt}` : 'Автозагрузка включена')) : 'Общий журнал выключен';
       }
       if (hint) hint.textContent = message;
     }
@@ -2181,7 +2191,8 @@
           if (!response || response.ok === false) throw new Error((response && response.error) || 'Ошибка ответа Apps Script');
           const remote = Array.isArray(response) ? response : (response.items || []);
           mergeCloudHistory(remote);
-          if (!silent) updateCloudStatus('ok', `Журнал загружен из Google Sheets. Записей получено: ${remote.length}.`);
+          lastCloudLoadAt = new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+          updateCloudStatus('ok', silent ? undefined : `Журнал загружен из Google Sheets. Записей получено: ${remote.length}.`);
         } catch (err) {
           if (!silent) updateCloudStatus('error', 'Не удалось обработать журнал из Google Sheets: ' + err.message);
         } finally {
@@ -2297,10 +2308,7 @@
     }
 
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && cloudScriptUrl) {
-        syncPendingShipments(true);
-        loadCloudJournal(true);
-      }
+      if (!document.hidden && cloudScriptUrl) runCloudAutoSync(true);
     });
 
     init();
