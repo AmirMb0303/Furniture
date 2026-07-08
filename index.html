@@ -245,6 +245,18 @@
 
     .part.group-header .part-num {
       background: #6b7280;
+      font-size: 20px;
+    }
+
+    .part.detail-row {
+      grid-template-columns: 76px 1fr auto;
+    }
+
+    .part.detail-row .part-num {
+      width: 76px;
+      font-size: 15px;
+      letter-spacing: -0.2px;
+      white-space: nowrap;
     }
 
     .part.group-header.checked {
@@ -1412,7 +1424,7 @@
       ]
 };
 
-    const modelsVersion = '2026-07-08-excel-list-v4-cleanpart-fix';
+    const modelsVersion = '2026-07-08-excel-list-v5-ui-improved';
     if (localStorage.getItem('furnitureModelsVersion') !== modelsVersion) {
       localStorage.setItem('furnitureModels', JSON.stringify(defaultModels));
       localStorage.setItem('furnitureModelsVersion', modelsVersion);
@@ -1471,7 +1483,7 @@
       Object.keys(models).forEach(name => {
         const opt = document.createElement('option');
         opt.value = name;
-        opt.textContent = name;
+        opt.textContent = `${name} (${countModelDetails(name)})`;
         select.appendChild(opt);
       });
       if (!models[currentModel]) currentModel = Object.keys(models)[0];
@@ -1526,6 +1538,14 @@
         .map(item => item.number);
     }
 
+
+    function countModelDetails(modelName) {
+      return (models[modelName] || [])
+        .map((name, index) => cleanPartName(name, index + 1))
+        .filter(name => !isGroupHeader(name))
+        .length;
+    }
+
     function getCheckedDetailCount() {
       const detailNumbers = new Set(getDetailNumbers().map(String));
       return Object.keys(checked).filter(num => detailNumbers.has(String(num)) && checked[num]).length;
@@ -1550,10 +1570,10 @@
           const marked = item.children.filter(num => checked[num]).length;
           div.className = 'part group-header' + (done ? ' checked' : '') + (shipmentCompleted ? ' locked' : '');
           div.innerHTML = `
-            <div class="part-num">§</div>
+            <div class="part-num">📦</div>
             <div>
               <div class="part-name">${escapeHtml(item.name)}</div>
-              <div class="part-code">Раздел: ${marked} из ${total} деталей</div>
+              <div class="part-code">${marked} из ${total} упаковок</div>
             </div>
             <div class="checkmark">${done ? '✓' : '—'}</div>
           `;
@@ -1562,14 +1582,14 @@
         }
 
         const num = item.number;
-        div.className = 'part' + (checked[num] ? ' checked' : '') + (shipmentCompleted ? ' locked' : '');
+        div.className = 'part detail-row' + (checked[num] ? ' checked' : '') + (shipmentCompleted ? ' locked' : '');
         div.onclick = () => togglePart(num);
         const timeHtml = checkedTimes[num] ? `<div class="part-time">Отпущено: ${escapeHtml(checkedTimes[num])}</div>` : '';
         div.innerHTML = `
-          <div class="part-num">${num}</div>
+          <div class="part-num">${escapeHtml(item.name)}</div>
           <div>
-            <div class="part-name">${escapeHtml(item.name)}</div>
-            <div class="part-code">Деталь №${num}${item.group ? ' · ' + escapeHtml(item.group) : ''}</div>
+            <div class="part-name">${escapeHtml(item.group || 'Упаковка')}</div>
+            <div class="part-code">Упаковка</div>
             ${timeHtml}
           </div>
           <div class="checkmark">${checked[num] ? '✓' : '✗'}</div>
