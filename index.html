@@ -1496,9 +1496,21 @@
 
     const $ = id => document.getElementById(id);
 
+    function getLocalDateString() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function getLocalTimeString() {
+      return new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    }
+
     function init() {
       if (!localStorage.getItem('currentShipmentId')) localStorage.setItem('currentShipmentId', currentShipmentId);
-      $('date').value = new Date().toISOString().slice(0, 10);
+      $('date').value = getLocalDateString();
       ['buyer','worker','comment','paymentStatus'].forEach(id => {
         $(id).value = localStorage.getItem('field_' + id) || '';
         $(id).addEventListener('input', () => localStorage.setItem('field_' + id, $(id).value));
@@ -1805,7 +1817,7 @@
         $(id).value = '';
         localStorage.removeItem('field_' + id);
       });
-      $('date').value = new Date().toISOString().slice(0, 10);
+      $('date').value = getLocalDateString();
       $('paymentStatus').value = 'Оплачено';
       localStorage.setItem('field_date', $('date').value);
       localStorage.setItem('field_paymentStatus', $('paymentStatus').value);
@@ -2013,7 +2025,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `zhurnal_otgruzok_${new Date().toISOString().slice(0,10)}.csv`;
+      a.download = `zhurnal_otgruzok_${getLocalDateString()}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -2396,12 +2408,12 @@
 
     function getLocalPaymentDate(paymentStatus) {
       if (paymentStatus === 'Не оплачено') return '';
-      return new Date().toISOString().slice(0, 10);
+      return getLocalDateString();
     }
 
     function getLocalPaymentTime(paymentStatus) {
       if (paymentStatus === 'Не оплачено') return '';
-      return new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+      return getLocalTimeString();
     }
 
     function escapeJsAttr(value) {
