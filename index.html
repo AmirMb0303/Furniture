@@ -1508,6 +1508,25 @@
       return new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
     }
 
+    function formatDisplayDate(value) {
+      if (!value) return '—';
+      const raw = String(value).trim();
+      const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (isoMatch) return `${isoMatch[3]}.${isoMatch[2]}.${isoMatch[1]}`;
+      const ruMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+      if (ruMatch) return `${ruMatch[1].padStart(2, '0')}.${ruMatch[2].padStart(2, '0')}.${ruMatch[3]}`;
+      return raw;
+    }
+
+    function formatDisplayTime(value) {
+      if (!value) return '—';
+      const raw = String(value).trim();
+      const match = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?/);
+      if (match) return `${match[1].padStart(2, '0')}:${match[2]}`;
+      return raw;
+    }
+
+
     function init() {
       if (!localStorage.getItem('currentShipmentId')) localStorage.setItem('currentShipmentId', currentShipmentId);
       $('date').value = getLocalDateString();
@@ -1877,15 +1896,15 @@
             <tbody>
               ${filtered.map(h => `
                 <tr>
-                  <td>${escapeHtml(h.date || '')}</td>
-                  <td>${escapeHtml(h.time || '')}</td>
+                  <td>${escapeHtml(formatDisplayDate(h.date))}</td>
+                  <td>${escapeHtml(formatDisplayTime(h.time))}</td>
                   <td>${escapeHtml(h.buyer || 'не указан')}</td>
                   <td>${escapeHtml(h.model || '')}</td>
                   <td>${escapeHtml(h.worker || 'не указан')}</td>
                   <td>${escapeHtml(h.totalParts || 20)}</td>
                   <td>${paymentEditor(h)}</td>
-                  <td>${escapeHtml(h.paymentDate || '')}</td>
-                  <td>${escapeHtml(h.paymentTime || '')}</td>
+                  <td>${escapeHtml(formatDisplayDate(h.paymentDate))}</td>
+                  <td>${escapeHtml(formatDisplayTime(h.paymentTime))}</td>
                   <td>${escapeHtml(h.status || 'Отпущено')}</td>
                 </tr>
               `).join('')}
@@ -2036,7 +2055,7 @@
         <style>body{font-family:Arial,sans-serif;padding:20px;color:#111827}h1{font-size:22px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#111827;color:#fff}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}</style></head><body>
         <h1>Журнал отгрузок мебели</h1>
         <table><thead><tr><th>Дата</th><th>Время</th><th>Покупатель</th><th>Модель</th><th>Кладовщик</th><th>Деталей</th><th>Оплата</th><th>Дата оплаты</th><th>Время оплаты</th><th>Статус</th></tr></thead>
-        <tbody>${history.map(h => `<tr><td>${escapeHtml(h.date||'')}</td><td>${escapeHtml(h.time||'')}</td><td>${escapeHtml(h.buyer||'')}</td><td>${escapeHtml(h.model||'')}</td><td>${escapeHtml(h.worker||'')}</td><td>${escapeHtml(h.totalParts||20)}</td><td>${escapeHtml(h.paymentStatus||'Оплачено')}</td><td>${escapeHtml(h.paymentDate||'')}</td><td>${escapeHtml(h.paymentTime||'')}</td><td>${escapeHtml(h.status||'Отпущено')}</td></tr>`).join('')}</tbody></table>
+        <tbody>${history.map(h => `<tr><td>${escapeHtml(formatDisplayDate(h.date))}</td><td>${escapeHtml(formatDisplayTime(h.time))}</td><td>${escapeHtml(h.buyer||'')}</td><td>${escapeHtml(h.model||'')}</td><td>${escapeHtml(h.worker||'')}</td><td>${escapeHtml(h.totalParts||20)}</td><td>${escapeHtml(h.paymentStatus||'Оплачено')}</td><td>${escapeHtml(formatDisplayDate(h.paymentDate))}</td><td>${escapeHtml(formatDisplayTime(h.paymentTime))}</td><td>${escapeHtml(h.status||'Отпущено')}</td></tr>`).join('')}</tbody></table>
         </body></html>`;
       const w = window.open('', '_blank');
       w.document.write(html);
