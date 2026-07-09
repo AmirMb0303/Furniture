@@ -356,7 +356,7 @@
     .journal-table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 860px;
+      min-width: 760px;
       font-size: 13px;
     }
 
@@ -1872,8 +1872,6 @@
                 <th>Дата оплаты</th>
                 <th>Время оплаты</th>
                 <th>Статус</th>
-                <th>Синхр.</th>
-                <th>Запись</th>
               </tr>
             </thead>
             <tbody>
@@ -1889,8 +1887,6 @@
                   <td>${escapeHtml(h.paymentDate || '')}</td>
                   <td>${escapeHtml(h.paymentTime || '')}</td>
                   <td>${escapeHtml(h.status || 'Отпущено')}</td>
-                  <td>${syncBadge(h.cloudSync || '')}</td>
-                  <td>${escapeHtml(h.shipmentId || '')}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -2039,8 +2035,8 @@
         <!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Журнал отгрузок</title>
         <style>body{font-family:Arial,sans-serif;padding:20px;color:#111827}h1{font-size:22px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#111827;color:#fff}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}</style></head><body>
         <h1>Журнал отгрузок мебели</h1>
-        <table><thead><tr><th>Дата</th><th>Время</th><th>Покупатель</th><th>Модель</th><th>Кладовщик</th><th>Деталей</th><th>Оплата</th><th>Дата оплаты</th><th>Время оплаты</th><th>Статус</th><th>Синхр.</th><th>Запись</th></tr></thead>
-        <tbody>${history.map(h => `<tr><td>${escapeHtml(h.date||'')}</td><td>${escapeHtml(h.time||'')}</td><td>${escapeHtml(h.buyer||'')}</td><td>${escapeHtml(h.model||'')}</td><td>${escapeHtml(h.worker||'')}</td><td>${escapeHtml(h.totalParts||20)}</td><td>${escapeHtml(h.paymentStatus||'Оплачено')}</td><td>${escapeHtml(h.paymentDate||'')}</td><td>${escapeHtml(h.paymentTime||'')}</td><td>${escapeHtml(h.status||'Отпущено')}</td><td>${escapeHtml(h.cloudSync||'')}</td><td>${escapeHtml(h.shipmentId||'')}</td></tr>`).join('')}</tbody></table>
+        <table><thead><tr><th>Дата</th><th>Время</th><th>Покупатель</th><th>Модель</th><th>Кладовщик</th><th>Деталей</th><th>Оплата</th><th>Дата оплаты</th><th>Время оплаты</th><th>Статус</th></tr></thead>
+        <tbody>${history.map(h => `<tr><td>${escapeHtml(h.date||'')}</td><td>${escapeHtml(h.time||'')}</td><td>${escapeHtml(h.buyer||'')}</td><td>${escapeHtml(h.model||'')}</td><td>${escapeHtml(h.worker||'')}</td><td>${escapeHtml(h.totalParts||20)}</td><td>${escapeHtml(h.paymentStatus||'Оплачено')}</td><td>${escapeHtml(h.paymentDate||'')}</td><td>${escapeHtml(h.paymentTime||'')}</td><td>${escapeHtml(h.status||'Отпущено')}</td></tr>`).join('')}</tbody></table>
         </body></html>`;
       const w = window.open('', '_blank');
       w.document.write(html);
